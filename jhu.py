@@ -1,8 +1,10 @@
 import pandas as pd
 from states import states, state_abb
-import functools
+#import functools
+import cachetools.func
 
-@functools.lru_cache(128)
+#@functools.lru_cache(128)
+@cachetools.func.ttl_cache(ttl=3600)
 def load_and_massage(url):
     df = pd.read_csv(url)
     df = df.drop(columns=['Lat', 'Long'])
@@ -13,7 +15,8 @@ def load_and_massage(url):
     df.index = pd.to_datetime(df.index)
     return df
 
-@functools.lru_cache(128)
+#@functools.lru_cache(128)
+@cachetools.func.ttl_cache(ttl=3600)
 def load_world():
     # Data files
     sources = {
@@ -33,7 +36,8 @@ def load_world():
 
     return df
         
-@functools.lru_cache(128)
+#@functools.lru_cache(128)
+@cachetools.func.ttl_cache(ttl=3600)
 def load_us():
     
     df = load_world()
