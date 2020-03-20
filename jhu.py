@@ -50,7 +50,7 @@ def load_us():
         return s.split(',')[-1].strip(), v
 
     US = US.groupby(by_state, axis=1, as_index=True).sum()
-    US.columns = pd.MultiIndex.from_tuples(foo.columns)
+    US.columns = pd.MultiIndex.from_tuples(US.columns)
     
     # Filter for province in states.keys()
     is_state = [province in states.keys() for province in US.columns.get_level_values(0) ]
