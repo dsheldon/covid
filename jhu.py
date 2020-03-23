@@ -10,6 +10,7 @@ def load_and_massage(url):
     df = df.drop(columns=['Lat', 'Long'])
     df = df.rename(columns={'Province/State' : 'province', 'Country/Region' : 'country'})    
     df.province = df.province.replace(state_abb)
+    df.province = df.province.fillna('tot')
     df = df.set_index(['country', 'province'])
     df = df.T
     df.index = pd.to_datetime(df.index)
@@ -49,6 +50,12 @@ def load_us():
     # Get US data: index is now (province, variable)
     US = df.US
 
+    # Maps place name in the US to states. Place names could be state
+    # abbreviations ('MA') or city/state combinations ('Boston, MA')
+    #
+    
+    # Input is a key like ('Boston, MA', 'confirmed') or ('MA', 'confirmed')
+    #  Output in both cases should be ('MA', 'confirmed')
     def by_state(k):
         s,v=k
         return s.split(',')[-1].strip(), v
