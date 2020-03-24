@@ -2,6 +2,7 @@ import pandas as pd
 from states import states, state_abb
 #import functools
 import cachetools.func
+import warnings
 
 #@functools.lru_cache(128)
 @cachetools.func.ttl_cache(ttl=3600)
@@ -19,7 +20,32 @@ def load_and_massage(url):
 #@functools.lru_cache(128)
 @cachetools.func.ttl_cache(ttl=3600)
 def load_world():
-    # Data files
+
+    sources = {
+    'confirmed' : 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
+    'deaths' : 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+}
+
+    # Load each data file into a dataframe with row index = date, and column index = (country, province)
+    d = {key: load_and_massage(url) for key, url in sources.items()}
+
+    # Concatenate data frames: column index is now (variable, country, province)
+    df = pd.concat(d.values(), axis=1, keys=d.keys())
+
+    # Permute order of index to (country, province, variable) and sort the columns by the index value
+    df = df.reorder_levels([1,2,0], axis=1).sort_index(axis=1)
+
+    return df
+    
+    return df
+        
+#@functools.lru_cache(128)
+@cachetools.func.ttl_cache(ttl=3600)
+def load_us():
+
+    warnings.warn('This data is now deprecated. Use jhu.load_world() for country-level data'
+            'or covidtracking.load_us() for state-level data in the US')
+    
     sources = {
         'confirmed' : 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv',
         'deaths' : 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv',
@@ -34,14 +60,6 @@ def load_world():
 
     # Permute order of index to (country, province, variable) and sort the columns by the index value
     df = df.reorder_levels([1,2,0], axis=1).sort_index(axis=1)
-
-    return df
-        
-#@functools.lru_cache(128)
-@cachetools.func.ttl_cache(ttl=3600)
-def load_us():
-    
-    df = load_world()
     
     # Get US data: index is now (province, variable)
     US = df.US
