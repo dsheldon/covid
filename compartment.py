@@ -1,4 +1,3 @@
-import abc
 import jax
 from jax.experimental.ode import build_odeint
 import jax.numpy as np
@@ -10,9 +9,9 @@ Does not store parameters or state values. These are always passed in
 '''
 class CompartmentModel(object):
     
-    @abc.abstractmethod
-    def dx_dt(self, x, theta):
+    def dx_dt(self, x, *args):
         '''Compute time derivative'''
+        raise NotImplementedError()
         return
         
     def __init__(self, rtol=1e-5, atol=1e-3, mxstep=500):
@@ -34,7 +33,7 @@ class CompartmentModel(object):
             
     def run_static(self, T, x0, theta):
         t = np.arange(T, dtype='float32')
-        return self.odeint(x0, t, theta)
+        return self.odeint(x0, t, *theta)
 
     def run_time_varying(self, T, x0, theta):
         theta = tuple(np.broadcast_to(a, (T-1,)) for a in theta)
@@ -42,7 +41,7 @@ class CompartmentModel(object):
         t_one_step = np.array([0.0, 1.0])
         
         def advance(x0, theta):
-            x1 = self.odeint(x0, t_one_step, theta)[1]
+            x1 = self.odeint(x0, t_one_step, *theta)[1]
             return x1, x1
 
         # Run T–1 steps of the dynamics starting from the intial distribution
@@ -52,12 +51,11 @@ class CompartmentModel(object):
 
 class SIRModel(CompartmentModel):
 
-    def dx_dt(self, x, t, theta):
+    def dx_dt(self, x, t, beta, gamma):
         """
         SIR equations
         """        
         S, I, R, C = x
-        beta, gamma = theta
         N = S + I + R
         
         dS_dt = - beta * S * I / N
@@ -86,12 +84,11 @@ class SIRModel(CompartmentModel):
         
 class SEIRModel(CompartmentModel):
     
-    def dx_dt(self, x, t, theta):
+    def dx_dt(self, x, t, beta, sigma, gamma):
         """
         SEIR equations
         """        
         S, E, I, R, C = x
-        beta, sigma, gamma = theta
         N = S + E + I + R
         
         dS_dt = - beta * S * I / N
