@@ -116,7 +116,7 @@ def SIR_stochastic(T = 50,
                    beta_shape = 5,
                    det_rate_mean = 0.3,
                    det_rate_conc = 50,
-                   det_conc = 1000,
+                   det_conc = 100,
                    drift_scale = 5e-2,
                    obs = None):
 
@@ -207,12 +207,12 @@ def SEIR_stochastic(T = 50,
                     I_duration_mean = 1.5,
                     R0_mean = 3.5,
                     beta_shape = 1,
-                    sigma_shape = 20,
-                    gamma_shape = 20,
+                    sigma_shape = 5,
+                    gamma_shape = 5,
                     det_rate_mean = 0.3,
                     det_rate_conc = 50,
-                    det_conc = 1000,
-                    drift_scale = 5e-2,
+                    det_conc = 100,
+                    drift_scale = 1e-1,
                     obs = None):
 
     '''
@@ -275,7 +275,7 @@ Plotting
 ************************************************************
 """
 
-def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None):
+def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model='SIR'):
     '''
     Plotting method for SIR-type models. 
     (Needs some refactoring to handle both SIR and SEIR)
@@ -302,11 +302,18 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None):
         'R': 'removed',
         'C': 'confirmed'
     }
+
+    if model == 'SIR':
+        S, I, R, C = 0, 1, 2, 3
+    elif model == 'SEIR':
+        S, E, I, R, C = 0, 1, 2, 3, 4
+    else:
+        raise ValueError("Bad model")
     
-    fields = {'S': x[:,:T,0],
-              'I': x[:,:T,1],
-              'R': x[:,:T,2],
-              'C': x[:,:T,3]}    
+    fields = {'S': x[:,:T, S],
+              'I': x[:,:T, I],
+              'R': x[:,:T, R],
+              'C': x[:,:T, C]}    
     
     if 'y' in samples:
         y0 = samples['y0'][:, None]
