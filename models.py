@@ -231,24 +231,21 @@ def SIR_hierarchical(num_places = 1,
     Draw shared parameters
     '''
     
-#     gamma_ = numpyro.sample("gamma_", 
-#                      dist.Gamma(gamma_shape, 
-#                                 gamma_shape * duration_mean))
+    gamma_ = numpyro.sample("gamma_", 
+                     dist.Gamma(gamma_shape, 
+                                gamma_shape * duration_mean))
 
-#     beta_ = numpyro.sample("beta_", 
-#                              dist.Gamma(beta_shape, 
-#                                  beta_shape * duration_mean/R0_mean))
+    beta_ = numpyro.sample("beta_", 
+                             dist.Gamma(beta_shape, 
+                                 beta_shape * duration_mean/R0_mean))
 
-
-#     det_rate_ = numpyro.sample("det_rate_", 
-#                                dist.Beta(det_rate_mean * det_rate_conc,
-#                                          (1 - det_rate_mean) * det_rate_conc))
+    det_rate_ = numpyro.sample("det_rate_", 
+                               dist.Beta(det_rate_mean * det_rate_conc,
+                                         (1 - det_rate_mean) * det_rate_conc))
     
         
-    # Broadcast shared parameters to correct size
+    # Broadcast to correct size
     N = np.broadcast_to(N, (num_places,))
-    #gamma = np.broadcast_to(gamma, (num_places,))
-    #print("N", N)
     
 
     '''
@@ -257,25 +254,12 @@ def SIR_hierarchical(num_places = 1,
     with numpyro.plate("num_places", num_places):
         
         I0 = numpyro.sample("I0", dist.Uniform(0, N*0.02))
+                
+        gamma = numpyro.sample("gamma", dist.Gamma(20, 20 / gamma_))
         
-        gamma = numpyro.sample("gamma", 
-                     dist.Gamma(gamma_shape, 
-                                gamma_shape * duration_mean))
-
-        beta0 = numpyro.sample("beta0", 
-                             dist.Gamma(beta_shape, 
-                                 beta_shape * duration_mean/R0_mean))
-
-        det_rate = numpyro.sample("det_rate", 
-                               dist.Beta(det_rate_mean * det_rate_conc,
-                                         (1 - det_rate_mean) * det_rate_conc))
-
+        beta0 = numpyro.sample("beta0", dist.Gamma(20, 20 / beta_))
         
-#         gamma = numpyro.sample("gamma", dist.Gamma(20, 20 / gamma_))
-        
-#         beta0 = numpyro.sample("beta0", dist.Gamma(20, 20 / beta_))
-        
-#         det_rate = numpyro.sample("det_rate", dist.Beta(100*det_rate_, 100*(1-det_rate_)))
+        det_rate = numpyro.sample("det_rate", dist.Beta(100*det_rate_, 100*(1-det_rate_)))
 
     '''
     Run model for each place
