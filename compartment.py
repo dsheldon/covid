@@ -80,7 +80,7 @@ class SIRModel(CompartmentModel):
         '''
         Seed infection. Return state vector for I infected out of N
         '''
-        return np.array([N-I, I, 0.0, I])
+        return np.stack([N-I, I, 0.0, I])
         
 class SEIRModel(CompartmentModel):
     
@@ -120,4 +120,4 @@ class SEIRModel(CompartmentModel):
         '''
         Seed infection. Return state vector for I exponsed out of N
         '''
-        return np.array([N-E-I, E, I, 0.0, I])
+        return np.stack([N-E-I, E, I, 0.0, I])
