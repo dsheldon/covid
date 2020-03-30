@@ -332,8 +332,8 @@ def SEIR_dynamics(SEIR, T, params, x0, obs = None, suffix=""):
 def SEIR_stochastic(T = 50,
                     N = 1e5,
                     T_future = 0,
-                    E_duration_mean = 4.0,
-                    I_duration_mean = 1.5,
+                    E_duration_mean = 4.5,
+                    I_duration_mean = 1.0,
                     R0_mean = 3.5,
                     beta_shape = 1,
                     sigma_shape = 5,
@@ -351,12 +351,10 @@ def SEIR_stochastic(T = 50,
     # Sample initial number of infected individuals
     I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
     E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
-        
-
+    
     # Sample parameters
     sigma = numpyro.sample("sigma", 
                            dist.Gamma(sigma_shape, sigma_shape * E_duration_mean))
-
 
     gamma = numpyro.sample("gamma", 
                            dist.Gamma(gamma_shape, gamma_shape * I_duration_mean))    
@@ -427,9 +425,10 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model
     
     labels = {
         'S': 'susceptible',
-        'I': 'infected',
+        'I': 'infectious',
         'R': 'removed',
-        'C': 'confirmed'
+        'C': 'total infections',
+        'y': 'total confirmed'
     }
 
     if model == 'SIR':
@@ -442,7 +441,7 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model
     fields = {'S': x[:,:T, S],
               'I': x[:,:T, I],
               'R': x[:,:T, R],
-              'C': x[:,:T, C]}    
+              'C': x[:,:T, C]}
     
     if 'y' in samples:
         y0 = samples['y0'][:, None]
@@ -453,7 +452,7 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model
             y = np.concatenate((y, y_future), axis=1)
         fields['y'] = y[:,:T]
     
-    fields = {k: fields[k] for k in plot_fields}
+    fields = {labels[k]: fields[k] for k in plot_fields}
 
     means = {k: v.mean(axis=0) for k, v in fields.items()}
     
@@ -472,5 +471,3 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model
     for k, pred_interval in pred_intervals.items():
         ax = ax if ax is not None else plt.gca()
         ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], alpha=0.1)
-        
-    plt.ylim([pred_intervals['I'][0,:].min(), pred_intervals['I'][1,:].max()])
