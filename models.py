@@ -192,14 +192,15 @@ def SIR_dynamics_hierarchical(SIR, T, params, x0, obs = None, suffix=""):
         beta = numpyro.sample("beta" + suffix, 
                       ExponentialRandomWalk(loc = beta0, scale=drift_scale, num_steps=T-1))
     
-    
-    # Run ODE
-    apply_model = lambda x0, beta, gamma: SIR.run(T, x0, (beta, gamma))        
 
+    # Run ODE
+    #apply_model = lambda x0, beta, gamma: SIR.run(T, x0, (beta, gamma))
     # TODO: workaround for vmap bug
     #x = jax.vmap(apply_model)(x0, beta, gamma)
-    x = np.stack([apply_model(xx, b, g) for xx, b, g in zip(x0, beta, gamma)])
-                  
+    #x = np.stack([apply_model(xx, b, g) for xx, b, g in zip(x0, beta, gamma)])
+
+    x = SIR.run_batch(T, x0, (beta, gamma))
+    
     x = x[:,1:,:] # drop first time step from result (duplicates initial value)
     numpyro.deterministic("x" + suffix, x)
    
