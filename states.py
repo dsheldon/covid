@@ -21,11 +21,10 @@ def uga_announcements():
     return announcements
 
 
-states = {
+states = { # includes DC
         'AK': 'Alaska',
         'AL': 'Alabama',
         'AR': 'Arkansas',
-        'AS': 'American Samoa',
         'AZ': 'Arizona',
         'CA': 'California',
         'CO': 'Colorado',
@@ -34,7 +33,6 @@ states = {
         'DE': 'Delaware',
         'FL': 'Florida',
         'GA': 'Georgia',
-        'GU': 'Guam',
         'HI': 'Hawaii',
         'IA': 'Iowa',
         'ID': 'Idaho',
@@ -49,10 +47,8 @@ states = {
         'MI': 'Michigan',
         'MN': 'Minnesota',
         'MO': 'Missouri',
-        'MP': 'Northern Mariana Islands',
         'MS': 'Mississippi',
         'MT': 'Montana',
-        'NA': 'National',
         'NC': 'North Carolina',
         'ND': 'North Dakota',
         'NE': 'Nebraska',
@@ -65,7 +61,6 @@ states = {
         'OK': 'Oklahoma',
         'OR': 'Oregon',
         'PA': 'Pennsylvania',
-        'PR': 'Puerto Rico',
         'RI': 'Rhode Island',
         'SC': 'South Carolina',
         'SD': 'South Dakota',
@@ -73,12 +68,21 @@ states = {
         'TX': 'Texas',
         'UT': 'Utah',
         'VA': 'Virginia',
-        'VI': 'Virgin Islands',
         'VT': 'Vermont',
         'WA': 'Washington',
         'WI': 'Wisconsin',
         'WV': 'West Virginia',
         'WY': 'Wyoming'
 }
+
+territories = {
+        'AS': 'American Samoa',
+        'GU': 'Guam',
+        'MP': 'Northern Mariana Islands',
+        'NA': 'National',
+        'PR': 'Puerto Rico',
+        'VI': 'Virgin Islands'
+}
+
 
 state_abb = {v: k for k, v in states.items()}
