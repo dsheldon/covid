@@ -60,13 +60,13 @@ def save_samples(place,
              mcmc_samples = mcmc_samples, 
              post_pred_samples = post_pred_samples)
 
+def save_summary(place, mcmc):
     # Write diagnostics to file
     filename = f'out/{place}_summary.txt'
     orig_stdout = sys.stdout
     with open(filename, 'w') as f:
         sys.stdout = f
         mcmc.print_summary()
-
     sys.stdout = orig_stdout
 
     
@@ -100,7 +100,7 @@ def run_place(place):
     print("MCMC")
     mcmc = MCMC(kernel, 
                 num_warmup=1000, 
-                num_samples=1000, 
+                num_samples=2000, 
                 num_chains=1)
 
     print("run")
@@ -119,6 +119,8 @@ def run_place(place):
     args['drift_scale'] = 0 # set drift to zero for forecasting
     post_pred = Predictive(prob_model, posterior_samples = mcmc_samples)
     post_pred_samples = post_pred(PRNGKey(2), T_future=100, **args)
+
+    save_summary(place, mcmc)
 
     save_samples(place,
                  prior_samples,
