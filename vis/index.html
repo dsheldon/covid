@@ -1,0 +1,76 @@
+<html>
+  <head>
+    <title>State SEIR Results</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>  
+  </head>
+
+  <style>
+    .row {
+        white-space: nowrap;
+        vertical-align: top;
+        padding: 0px;
+        margin: 0px;
+    }
+    img {
+        vertical-align: middle;
+        padding: 0px;
+        margin: 0px;
+        display: inline;
+    }
+  </style>
+  <body>
+    <h1>State SEIR Results</h1>
+
+    Scale:
+    <select id="scale">
+      <option value="lin" selected>linear</option>
+      <option value="log">log</option>
+    </select>
+
+    Time horizon:
+    <select id="horizon">
+      <option value="30">30 days</option>
+      <option value="50">50 days</option>
+      <option value="100" selected>100 days</option>
+    </select>
+
+  </body>
+
+  <script>
+    var states = ['OH', 'MD', 'VT', 'CO', 'MS', 'NE', 'RI', 'WI', 'FL', 'VA', 'WA', 'MI', 'SC', 'IN', 'LA', 'MO', 'NV', 'DC', 'NH', 'OR', 'ME', 'WY', 'IA', 'HI', 'MN', 'AR', 'DE', 'MA', 'ND', 'TX', 'KY', 'CT', 'TN', 'UT', 'ID', 'OK', 'IL', 'CA', 'NJ', 'NY', 'NM', 'KS', 'MT', 'AK', 'AL', 'GA', 'WV', 'PA', 'AZ', 'SD', 'NC'];
+
+    
+    d3.select("#scale").on('change', load)
+    d3.select("#horizon").on('change', load)
+
+    function load() {
+
+        console.log("here!")
+        
+        var scale = d3.select("#scale").node().value;
+        var T = d3.select("#horizon").node().value;
+        
+        var divs =
+            d3.select("body").selectAll("div")
+            .data(states);
+
+        var entering = divs.enter()
+            .append("div")
+            .attr("class", "row")
+
+        entering.append("img")
+            .attr("class", "forecast")
+            .attr("src", (d, i) => d + "_predictive_scale_" + scale + "_T_" + T + ".png");
+        
+        entering.append("img")
+            .attr("src", (d, i) => d + '_R0.png');
+
+        divs.selectAll(".forecast")
+            .attr("src", (d, i) => d + "_predictive_scale_" + scale + "_T_" + T + ".png");
+    }
+
+    load();
+    
+  </script>
+  
+</html>
