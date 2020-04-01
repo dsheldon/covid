@@ -1,9 +1,10 @@
 import jax
-from jax.experimental.ode import build_odeint
+from jax.experimental.ode import odeint
 import jax.numpy as np
 
 def build_odeint_batch(dx_dt, **kwargs):
     '''
+    TODO: DEPRECATE
     Build a vectorized ODE solver
     
     Avoids current issue with applying vmap to odeint
@@ -37,49 +38,43 @@ def build_odeint_batch(dx_dt, **kwargs):
 
 class CompartmentModel(object):
     '''
-    Base class for compartment models
+    Base class for compartment models. 
+    
+    As of 4/1/2020 there is no state to these objects, so all method
+    are class methods.
     '''
     
-    def dx_dt(self, x, *args):
+    @classmethod
+    def dx_dt(cls, x, *args):
         '''Compute time derivative'''
         raise NotImplementedError()
         return
 
     
-    def __init__(self, rtol=1e-5, atol=1e-3, mxstep=500):
-        
-        self.odeint = build_odeint(self.dx_dt, 
-                                   rtol=rtol,
-                                   atol=atol, 
-                                   mxstep=mxstep)
-        
-        self.batch_odeint = build_odeint_batch(self.dx_dt,
-                                               rtol=rtol,
-                                               atol=atol,
-                                               mxstep=mxstep)
-    
-    
-    def run(self, T, x0, theta):
+    @classmethod
+    def run(cls, T, x0, theta):
         
         # Theta is a tuple of parameters. Entries are 
         # scalars or vectors of length T-1
         is_scalar = [np.ndim(a)==0 for a in theta]
         if np.all(is_scalar):
-            return self._run_static(T, x0, theta)        
+            return cls._run_static(T, x0, theta)        
         else:
-            return self._run_time_varying(T, x0, theta)
-            
+            return cls._run_time_varying(T, x0, theta)
+        
     
-    def _run_static(self, T, x0, theta):
+    @classmethod
+    def _run_static(cls, T, x0, theta):
         '''
         x0 is shape (d,)
         theta is shape (nargs,)
         '''
         t = np.arange(T, dtype='float32')
-        return self.odeint(x0, t, *theta)
+        return odeint(cls.dx_dt, x0, t, *theta)
 
     
-    def _run_time_varying(self, T, x0, theta):
+    @classmethod
+    def _run_time_varying(cls, T, x0, theta):
         
         theta = tuple(np.broadcast_to(a, (T-1,)) for a in theta)
 
@@ -90,7 +85,7 @@ class CompartmentModel(object):
         t_one_step = np.array([0.0, 1.0])
         
         def advance(x0, theta):
-            x1 = self.odeint(x0, t_one_step, *theta)[1]
+            x1 = odeint(cls.dx_dt, x0, t_one_step, *theta)[1]
             return x1, x1
 
         # Run T–1 steps of the dynamics starting from the intial distribution
@@ -98,13 +93,16 @@ class CompartmentModel(object):
         return np.vstack((x0, X))
     
     
-    def run_batch(self, T, x0, theta):
+    @classmethod
+    def run_batch(cls, T, x0, theta):
         '''
         Run dynamics for a batch of (x0, theta) pairs
     
         x0 is shape (batch_sz, d)
         entries of theta are either (batch_sz,) or (batch_sz, T-1)
         '''
+        
+        raise NotImplementedError()  # TODO update given jax bug fix
         
         batch_sz, d = x0.shape
         
@@ -131,10 +129,11 @@ class CompartmentModel(object):
         return X
 
     
-
+    
 class SIRModel(CompartmentModel):
 
-    def dx_dt(self, x, t, beta, gamma):
+    @classmethod
+    def dx_dt(cls, x, t, beta, gamma):
         """
         SIR equations
         """        
@@ -148,18 +147,18 @@ class SIRModel(CompartmentModel):
         
         return np.stack([dS_dt, dI_dt, dR_dt, dC_dt])
 
-    @staticmethod
-    def R0(theta):
+    @classmethod
+    def R0(cls, theta):
         beta, gamma = theta
         return beta/gamma
     
-    @staticmethod
-    def growth_rate(theta):
+    @classmethod
+    def growth_rate(cls, theta):
         beta, gamma = theta
         return beta - gamma
 
-    @staticmethod
-    def seed(N=1e6, I=100.):
+    @classmethod
+    def seed(cls, N=1e6, I=100.):
         '''
         Seed infection. Return state vector for I infected out of N
         '''
@@ -169,7 +168,8 @@ class SIRModel(CompartmentModel):
 
 class SEIRModel(CompartmentModel):
     
-    def dx_dt(self, x, t, beta, sigma, gamma):
+    @classmethod
+    def dx_dt(cls, x, t, beta, sigma, gamma):
         """
         SEIR equations
         """        
@@ -184,13 +184,15 @@ class SEIRModel(CompartmentModel):
         
         return np.stack([dS_dt, dE_dt, dI_dt, dR_dt, dC_dt])
 
-    @staticmethod
-    def R0(theta):
+    
+    @classmethod
+    def R0(cls, theta):
         beta, sigma, gamma = theta
         return beta / gamma
     
-    @staticmethod
-    def growth_rate(theta):
+    
+    @classmethod
+    def growth_rate(cls, theta):
         '''
         Initial rate of exponential growth
         
@@ -199,9 +201,10 @@ class SEIRModel(CompartmentModel):
         '''
         beta, sigma, gamma = theta
         return (-(sigma + gamma) + np.sqrt((sigma - gamma)**2 + 4 * sigma * beta))/2.
-        
-    @staticmethod
-    def seed(N=1e6, I=100., E=0.):
+
+    
+    @classmethod
+    def seed(cls, N=1e6, I=100., E=0.):
         '''
         Seed infection. Return state vector for I exponsed out of N
         '''

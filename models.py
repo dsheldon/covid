@@ -24,8 +24,8 @@ def BinomialApprox(n, p, conc=None):
     if conc is None:
         conc = n
     
-    a = conc * p
-    b = conc * (1-p)
+    a = n / conc * p
+    b = n / conc * (1-p)
     
     # This is the distribution of n * Beta(a, b)
     return dist.TransformedDistribution(
@@ -64,14 +64,20 @@ def observe(name, latent, det_rate, det_conc, obs=None):
         
         See https://forum.pyro.ai/t/behavior-of-mask-handler-with-invalid-observation-possible-bug/1719/5
         '''
-        mask = (obs > 0) & (obs < latent)  
-        obs = np.where(mask, obs, 0.5 * latent)
+        mask = np.isfinite(obs) & (obs >= 0) & (obs <= latent)
+        obs = np.where(mask, obs, 0.0)
+
+        '''
+        This observation model doesn't accept zeros. Replace with small default values
+        '''
+        #obs = np.where(obs > 0, obs, 1e-8)
          
-    # This ensure there is a separate RV for each latent variable
+    # This ensures there is a separate RV for each latent variable
     det_rate = np.broadcast_to(det_rate, latent.shape)
     
-    d = BinomialApprox(latent, det_rate, det_conc)
-
+    #d = BinomialApprox(latent, det_rate, det_conc)
+    d = dist.BetaBinomial(det_conc * det_rate, det_conc * (1-det_rate), latent)
+    
     with numpyro.handlers.mask(mask):
         y = numpyro.sample(name, d, obs = obs)
         
@@ -305,6 +311,49 @@ SEIR model
 ************************************************************
 """
 
+def SEIR_dynamics_dev(SEIR, T, params, x0, obs = None, suffix=""):
+
+    '''
+    Run SEIR dynamics for T time steps
+    '''
+    
+    beta0, sigma, gamma, det_rate, det_conc, drift_scale = params
+
+    beta = numpyro.sample("beta" + suffix, 
+                  ExponentialRandomWalk(loc=beta0, scale=drift_scale, num_steps=T-1))
+
+    beta, sigma, gamma = np.broadcast_arrays(beta, sigma, gamma)
+
+    shape = 1
+    mean = 0
+    #imm = numpyro.sample("imm" + suffix, dist.Gamma(shape, shape/mean), sample_shape=(T-1,))
+    imm = np.broadcast_to(mean, beta.shape)
+    
+    t_one_step = np.array([0.0, 1.0])
+    def one_step(x, params):
+        '''
+        Advances one time step
+        '''
+        beta, sigma, gamma, imm = params
+        x_next = SEIR.odeint(x, t_one_step, beta, sigma, gamma)[1]
+        jax.ops.index_update(x, 1, x[1] + imm) # i.e. x[1] += imm
+        return x_next, x_next
+    
+    # Now run the dynamics using jax.lax.scan
+    params = np.stack((beta, sigma, gamma, imm)).T  # time axis is now leading dimension
+    
+    # Run T–1 steps of the dynamics starting from the intial distribution
+    _, x = jax.lax.scan(one_step, x0, params, T-1)
+    numpyro.deterministic("x" + suffix, x)
+
+    latent = x[:,4]
+
+    # Noisy observations
+    y = observe("y" + suffix, x[:,4], det_rate, det_conc, obs = obs)
+
+    return beta, x, y
+
+
 def SEIR_dynamics(SEIR, T, params, x0, obs = None, suffix=""):
 
     '''
@@ -356,6 +405,10 @@ def SEIR_stochastic(T = 50,
     sigma = numpyro.sample("sigma", 
                            dist.Gamma(sigma_shape, sigma_shape * E_duration_mean))
 
+    
+#     gamma = numpyro.sample("gamma", dist.Uniform(0, 3))
+#     beta0 = numpyro.sample("beta0", dist.Uniform(0, 6))
+        
     gamma = numpyro.sample("gamma", 
                            dist.Gamma(gamma_shape, gamma_shape * I_duration_mean))    
 
@@ -379,7 +432,7 @@ def SEIR_stochastic(T = 50,
     
     params = (beta0, sigma, gamma, det_rate, det_conc, drift_scale)
     
-    beta, x, y = SEIR_dynamics(SEIR, T, params, x0, obs = obs)
+    beta, x, y = SEIR_dynamics_dev(SEIR, T, params, x0, obs = obs)
     
     x = np.vstack((x0, x))
     y = np.append(y0, y)
@@ -388,7 +441,7 @@ def SEIR_stochastic(T = 50,
         
         params = (beta[-1], sigma, gamma, det_rate, det_conc, drift_scale)
         
-        beta_f, x_f, y_f = SEIR_dynamics(SEIR, T_future+1, params, x[-1,:], suffix="_future")
+        beta_f, x_f, y_f = SEIR_dynamics_dev(SEIR, T_future+1, params, x[-1,:], suffix="_future")
         
         x = np.vstack((x, x_f))
         y = np.append(y, y_f)
