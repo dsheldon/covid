@@ -35,15 +35,27 @@ def BinomialApprox(n, p, conc=None):
     )
 
 
-def ExponentialRandomWalk(loc=1., scale=1e-2, num_steps=100):
+def ExponentialRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
     '''
     Return distrubtion of exponentiated Gaussian random walk
+    
+    Variables are x_0, ..., x_{T-1}
+    
+    Dynamics in log-space are random walk with drift:
+       log(x_0) := log(loc) 
+       log(x_t) := log(x_{t-1}) + drift + eps_t,    eps_t ~ N(0, scale)
+        
+    ==> Dynamics in non-log space are:
+        x_0 := loc
+        x_t := x_{t-1} * exp(drift + eps_t),    eps_t ~ N(0, scale)        
     '''
+    
+    log_loc = np.log(loc) + drift * np.arange(num_steps, dtype='float32')
     
     return dist.TransformedDistribution(
         dist.GaussianRandomWalk(scale=scale, num_steps=num_steps),
         [
-            dist.transforms.AffineTransform(loc = np.log(loc), scale=1.),
+            dist.transforms.AffineTransform(loc = log_loc, scale=1.),
             dist.transforms.ExpTransform()
         ]
     )
@@ -227,12 +239,12 @@ def SIR_dynamics_hierarchical(SIR, T, params, x0, obs = None, suffix=""):
     
 
     # Run ODE
-    #apply_model = lambda x0, beta, gamma: SIR.run(T, x0, (beta, gamma))
-    # TODO: workaround for vmap bug
-    #x = jax.vmap(apply_model)(x0, beta, gamma)
-    #x = np.stack([apply_model(xx, b, g) for xx, b, g in zip(x0, beta, gamma)])
+    apply_model = lambda x0, beta, gamma: SIR.run(T, x0, (beta, gamma))
+    x = jax.vmap(apply_model)(x0, beta, gamma)
 
-    x = SIR.run_batch(T, x0, (beta, gamma))
+    # TODO: workaround for vmap bug
+    #x = np.stack([apply_model(xx, b, g) for xx, b, g in zip(x0, beta, gamma)])
+    #x = SIR.run_batch(T, x0, (beta, gamma))
     
     x = x[:,1:,:] # drop first time step from result (duplicates initial value)
     numpyro.deterministic("x" + suffix, x)
@@ -339,42 +351,33 @@ SEIR model
 """
 
 def SEIR_dynamics_dev(T, params, x0, obs = None, suffix=""):
-    '''Run SEIR dynamics for T time steps
+    '''Run SEIR dynamics for T time steps with AR process on beta. 
     
-    Uses explicit process model --- can be modified to change dynamics,
-    e.g., to add immigration or AR process.
+    Deprecated, but keep around for design pattern of defining one_step
+    dynamics and then iterating with lax.scan. This would also be used
+    for things like stochastic transitions and more complex process
+    models.
     '''
     
-    beta0, sigma, gamma, det_rate, det_conc, drift_scale = params
-
-    beta = numpyro.sample("beta" + suffix, 
-                  ExponentialRandomWalk(loc=beta0, scale=drift_scale, num_steps=T-1))
-
-    beta, sigma, gamma = np.broadcast_arrays(beta, sigma, gamma)
+    beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift = params
+   
+    logbeta0 = np.log(beta0)
     
-    t_one_step = np.array([0.0, 1.0])
-    def one_step(x, params):
+    eps = numpyro.sample("eps" + suffix, dist.Normal(loc=0, scale=drift_scale), sample_shape=(T-1,))
+    
+    def one_step(logbeta0, eps):
         '''Advances one time step'''
+        logbeta1 = phi1 * logbeta0 + phi0 + eps
+        return logbeta1, logbeta1
         
-        beta, sigma, gamma, imm = params
-        
-        x_next = odeint(SEIRModel.dx_dt, 
-                        x, 
-                        t_one_step, 
-                        beta, 
-                        sigma, 
-                        gamma, 
-                        rtol=1e-5, 
-                        atol=1e-3, 
-                        mxstep=500)[1]
-        
-        return x_next, x_next
+    _, logbeta = jax.lax.scan(one_step, logbeta0, eps, T-1)
     
-    # Now run the dynamics using jax.lax.scan
-    params = np.stack((beta, sigma, gamma, imm)).T  # time axis is now leading dimension
+    beta = np.exp(logbeta)
+    numpyro.deterministic("beta" + suffix, beta)
     
-    # Run T–1 steps of the dynamics starting from the intial distribution
-    _, x = jax.lax.scan(one_step, x0, params, T-1)
+    # Run ODE
+    x = SEIRModel.run(T, x0, (beta, sigma, gamma))
+    x = x[1:] # first entry duplicates x0
     numpyro.deterministic("x" + suffix, x)
 
     latent = x[:,4]
@@ -391,10 +394,10 @@ def SEIR_dynamics(T, params, x0, obs = None, suffix=""):
     Uses SEIRModel.run to run dynamics with pre-determined parameters.
     '''
     
-    beta0, sigma, gamma, det_rate, det_conc, drift_scale = params
+    beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift = params
 
-    beta = numpyro.sample("beta" + suffix, 
-                  ExponentialRandomWalk(loc=beta0, scale=drift_scale, num_steps=T-1))
+    beta = numpyro.sample("beta" + suffix,
+                  ExponentialRandomWalk(loc=beta0, scale=rw_scale, drift=drift, num_steps=T-1))
 
     # Run ODE
     x = SEIRModel.run(T, x0, (beta, sigma, gamma))
@@ -421,7 +424,8 @@ def SEIR_stochastic(T = 50,
                     det_rate_mean = 0.3,
                     det_rate_conc = 50,
                     det_conc = 100,
-                    drift_scale = 1e-1,
+                    rw_scale = 1e-1,
+                    drift_scale = None,
                     obs = None):
 
     '''
@@ -446,6 +450,12 @@ def SEIR_stochastic(T = 50,
                               dist.Beta(det_rate_mean * det_rate_conc,
                                         (1-det_rate_mean) * det_rate_conc))
     
+    if drift_scale is not None:
+        drift = numpyro.sample("drift", dist.Normal(loc=0, scale=drift_scale))
+    else:
+        drift = 0
+        
+    
     x0 = SEIRModel.seed(N, I0, E0)
     numpyro.deterministic("x0", x0)
     
@@ -455,7 +465,7 @@ def SEIR_stochastic(T = 50,
     # First observation
     y0 = observe("y0", x0[4], det_rate, det_conc, obs=obs0)
     
-    params = (beta0, sigma, gamma, det_rate, det_conc, drift_scale)
+    params = (beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift)
     
     beta, x, y = SEIR_dynamics(T, params, x0, obs = obs)
     
@@ -464,7 +474,7 @@ def SEIR_stochastic(T = 50,
     
     if T_future > 0:
         
-        params = (beta[-1], sigma, gamma, det_rate, det_conc, drift_scale)
+        params = (beta[-1], sigma, gamma, det_rate, det_conc, rw_scale, drift)
         
         beta_f, x_f, y_f = SEIR_dynamics(T_future+1, params, x[-1,:], suffix="_future")
         
