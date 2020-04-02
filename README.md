@@ -1,5 +1,14 @@
 # Bayesian compartmental models for COVID-19
 
+This repository contains code for Bayesian estimation of compartmental
+models for COVID-19.
+
+## Models
+
+We are experimenting with different models. This [Bayesian SEIR model](Bayesian SEIR Model.pdf) is fairly current as of April 2, 2020.
+
+## Installation
+
 Uses numpyro and jax. Requires most recent *development* versions of both
 projects from their github repos:
 
