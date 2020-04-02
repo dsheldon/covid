@@ -33,8 +33,8 @@ def run_place(place):
     args = {
         'N': N,
         'T': T,
-        'drift_scale': 2e-1,
-        'det_conc': 50,
+        'rw_scale': 2e-1,
+        'det_conc': 10,
     }
 
     kernel = NUTS(prob_model,
