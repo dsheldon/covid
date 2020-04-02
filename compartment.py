@@ -52,19 +52,19 @@ class CompartmentModel(object):
 
     
     @classmethod
-    def run(cls, T, x0, theta):
+    def run(cls, T, x0, theta, **kwargs):
         
         # Theta is a tuple of parameters. Entries are 
         # scalars or vectors of length T-1
         is_scalar = [np.ndim(a)==0 for a in theta]
         if np.all(is_scalar):
-            return cls._run_static(T, x0, theta)        
+            return cls._run_static(T, x0, theta, **kwargs) 
         else:
-            return cls._run_time_varying(T, x0, theta)
+            return cls._run_time_varying(T, x0, theta, **kwargs)
         
     
     @classmethod
-    def _run_static(cls, T, x0, theta):
+    def _run_static(cls, T, x0, theta, rtol=1e-5, atol=1e-3, mxstep=500):
         '''
         x0 is shape (d,)
         theta is shape (nargs,)
@@ -74,7 +74,7 @@ class CompartmentModel(object):
 
     
     @classmethod
-    def _run_time_varying(cls, T, x0, theta):
+    def _run_time_varying(cls, T, x0, theta, rtol=1e-5, atol=1e-3, mxstep=500):
         
         theta = tuple(np.broadcast_to(a, (T-1,)) for a in theta)
 
@@ -85,7 +85,7 @@ class CompartmentModel(object):
         t_one_step = np.array([0.0, 1.0])
         
         def advance(x0, theta):
-            x1 = odeint(cls.dx_dt, x0, t_one_step, *theta)[1]
+            x1 = odeint(cls.dx_dt, x0, t_one_step, *theta, rtol=rtol, atol=atol, mxstep=mxstep)[1]
             return x1, x1
 
         # Run T–1 steps of the dynamics starting from the intial distribution
