@@ -91,13 +91,14 @@ def save_samples(place,
              mcmc_samples = mcmc_samples, 
              post_pred_samples = post_pred_samples)
 
+
+def write_summary(place, mcmc, path='out'):
     # Write diagnostics to file
     filename = f'out/{place}_summary.txt'
     orig_stdout = sys.stdout
     with open(filename, 'w') as f:
         sys.stdout = f
         mcmc.print_summary()
-
     sys.stdout = orig_stdout
     
 def load_samples(place, path='out'):
