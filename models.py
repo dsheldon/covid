@@ -1,5 +1,6 @@
 import jax
 import jax.numpy as np
+from jax.experimental.ode import odeint
 
 import numpyro
 import numpyro.distributions as dist
@@ -23,9 +24,9 @@ def BinomialApprox(n, p, conc=None):
     '''
     if conc is None:
         conc = n
-    
-    a = n / conc * p
-    b = n / conc * (1-p)
+        
+    a = conc * p
+    b = conc * (1-p)
     
     # This is the distribution of n * Beta(a, b)
     return dist.TransformedDistribution(
@@ -49,13 +50,21 @@ def ExponentialRandomWalk(loc=1., scale=1e-2, num_steps=100):
 
 
 
-def observe(name, latent, det_rate, det_conc, obs=None):
-    '''
-    Make observations of a latent variable using the BinomialApprox
-    noise model. Wrapper that handles broadcasting and replacement
-    of bad values.
-    '''
+def observe(*args, **kwargs):
+    return _observe_binom_approx(*args, **kwargs)
+#    return _observe_beta_binom(*args, **kwargs)
+
+
+def _observe_binom_approx(name, latent, det_rate, det_conc, obs=None):
+    '''Make observations of a latent variable using BinomialApprox.'''
+    
     mask = True
+        
+    # Regularization: add reg to observed, and (reg/det_rate) to latent
+    # The primary purpose is to avoid zeros, which are invalid values for 
+    # the Beta observation model.
+    reg = 0.5 
+    latent = latent + (reg/det_rate)
     
     if obs is not None:
         '''
@@ -64,18 +73,37 @@ def observe(name, latent, det_rate, det_conc, obs=None):
         
         See https://forum.pyro.ai/t/behavior-of-mask-handler-with-invalid-observation-possible-bug/1719/5
         '''
+        mask = np.isfinite(obs)
+        obs = np.where(mask, obs, 0.5 * latent)
+        obs = obs + reg
+    
+    det_rate = np.broadcast_to(det_rate, latent.shape)        
+    det_conc = np.minimum(det_conc, latent) # don't allow it to be *more* concentrated than Binomial
+    
+    d = BinomialApprox(latent + (reg/det_rate), det_rate, det_conc)
+    
+    with numpyro.handlers.mask(mask):
+        y = numpyro.sample(name, d, obs = obs)
+        
+    return y
+
+
+def _observe_beta_binom(name, latent, det_rate, det_conc, obs=None):
+    '''
+    Make observations of a latent variable using BetaBinomial.
+    
+    (Cannot get inference to work with this model. Sigh.)
+    '''
+    mask = True
+    
+    if obs is not None:
         mask = np.isfinite(obs) & (obs >= 0) & (obs <= latent)
         obs = np.where(mask, obs, 0.0)
-
-        '''
-        This observation model doesn't accept zeros. Replace with small default values
-        '''
-        #obs = np.where(obs > 0, obs, 1e-8)
          
-    # This ensures there is a separate RV for each latent variable
     det_rate = np.broadcast_to(det_rate, latent.shape)
     
-    #d = BinomialApprox(latent, det_rate, det_conc)
+    latent = np.ceil(latent).astype('int32') # ensure integer
+    
     d = dist.BetaBinomial(det_conc * det_rate, det_conc * (1-det_rate), latent)
     
     with numpyro.handlers.mask(mask):
@@ -91,7 +119,7 @@ SIR model
 ************************************************************
 """
 
-def SIR_dynamics(SIR, T, params, x0, obs = None, suffix=""):
+def SIR_dynamics(T, params, x0, obs = None, suffix=""):
 
     '''
     Run SIR dynamics for T time steps
@@ -103,7 +131,7 @@ def SIR_dynamics(SIR, T, params, x0, obs = None, suffix=""):
                   ExponentialRandomWalk(loc = beta0, scale=drift_scale, num_steps=T-1))
 
     # Run ODE
-    x = SIR.run(T, x0, (beta, gamma))
+    x = SIRModel.run(T, x0, (beta, gamma))
     x = x[1:,:] # drop first time step from result (duplicates initial value)
     numpyro.deterministic("x" + suffix, x)
    
@@ -146,8 +174,7 @@ def SIR_stochastic(T = 50,
                                         (1-det_rate_mean) * det_rate_conc))
     
 
-    SIR = SIRModel()
-    x0 = SIR.seed(N, I0)
+    x0 = SIRModel.seed(N, I0)
     numpyro.deterministic("x0", x0)
 
     # Split observations into first and rest
@@ -159,7 +186,7 @@ def SIR_stochastic(T = 50,
     # Run dynamics
     params = (beta0, gamma, det_rate, det_conc, drift_scale)
     
-    beta, x, y = SIR_dynamics(SIR, T, params, x0, obs = obs)
+    beta, x, y = SIR_dynamics(T, params, x0, obs = obs)
     
     x = np.vstack((x0, x))
     y = np.append(y0, y)
@@ -168,7 +195,7 @@ def SIR_stochastic(T = 50,
         
         params = (beta[-1], gamma, det_rate, det_conc, drift_scale)
         
-        beta_f, x_f, y_f = SIR_dynamics(SIR, T_future+1, params, x[-1,:], suffix="_future")
+        beta_f, x_f, y_f = SIR_dynamics(T_future+1, params, x[-1,:], suffix="_future")
         
         x = np.vstack((x, x_f))
         y = np.append(y, y_f)
@@ -311,10 +338,11 @@ SEIR model
 ************************************************************
 """
 
-def SEIR_dynamics_dev(SEIR, T, params, x0, obs = None, suffix=""):
-
-    '''
-    Run SEIR dynamics for T time steps
+def SEIR_dynamics_dev(T, params, x0, obs = None, suffix=""):
+    '''Run SEIR dynamics for T time steps
+    
+    Uses explicit process model --- can be modified to change dynamics,
+    e.g., to add immigration or AR process.
     '''
     
     beta0, sigma, gamma, det_rate, det_conc, drift_scale = params
@@ -323,20 +351,23 @@ def SEIR_dynamics_dev(SEIR, T, params, x0, obs = None, suffix=""):
                   ExponentialRandomWalk(loc=beta0, scale=drift_scale, num_steps=T-1))
 
     beta, sigma, gamma = np.broadcast_arrays(beta, sigma, gamma)
-
-    shape = 1
-    mean = 0
-    #imm = numpyro.sample("imm" + suffix, dist.Gamma(shape, shape/mean), sample_shape=(T-1,))
-    imm = np.broadcast_to(mean, beta.shape)
     
     t_one_step = np.array([0.0, 1.0])
     def one_step(x, params):
-        '''
-        Advances one time step
-        '''
+        '''Advances one time step'''
+        
         beta, sigma, gamma, imm = params
-        x_next = SEIR.odeint(x, t_one_step, beta, sigma, gamma)[1]
-        jax.ops.index_update(x, 1, x[1] + imm) # i.e. x[1] += imm
+        
+        x_next = odeint(SEIRModel.dx_dt, 
+                        x, 
+                        t_one_step, 
+                        beta, 
+                        sigma, 
+                        gamma, 
+                        rtol=1e-5, 
+                        atol=1e-3, 
+                        mxstep=500)[1]
+        
         return x_next, x_next
     
     # Now run the dynamics using jax.lax.scan
@@ -354,10 +385,10 @@ def SEIR_dynamics_dev(SEIR, T, params, x0, obs = None, suffix=""):
     return beta, x, y
 
 
-def SEIR_dynamics(SEIR, T, params, x0, obs = None, suffix=""):
-
-    '''
-    Run SEIR dynamics for T time steps
+def SEIR_dynamics(T, params, x0, obs = None, suffix=""):
+    '''Run SEIR dynamics for T time steps
+    
+    Uses SEIRModel.run to run dynamics with pre-determined parameters.
     '''
     
     beta0, sigma, gamma, det_rate, det_conc, drift_scale = params
@@ -366,7 +397,7 @@ def SEIR_dynamics(SEIR, T, params, x0, obs = None, suffix=""):
                   ExponentialRandomWalk(loc=beta0, scale=drift_scale, num_steps=T-1))
 
     # Run ODE
-    x = SEIR.run(T, x0, (beta, sigma, gamma))
+    x = SEIRModel.run(T, x0, (beta, sigma, gamma))
     x = x[1:] # first entry duplicates x0
     numpyro.deterministic("x" + suffix, x)
 
@@ -381,9 +412,9 @@ def SEIR_dynamics(SEIR, T, params, x0, obs = None, suffix=""):
 def SEIR_stochastic(T = 50,
                     N = 1e5,
                     T_future = 0,
-                    E_duration_mean = 4.5,
-                    I_duration_mean = 1.0,
-                    R0_mean = 3.5,
+                    E_duration_mean = 4.0,
+                    I_duration_mean = 2.0,
+                    R0_mean = 3.0,
                     beta_shape = 1,
                     sigma_shape = 5,
                     gamma_shape = 5,
@@ -404,11 +435,7 @@ def SEIR_stochastic(T = 50,
     # Sample parameters
     sigma = numpyro.sample("sigma", 
                            dist.Gamma(sigma_shape, sigma_shape * E_duration_mean))
-
     
-#     gamma = numpyro.sample("gamma", dist.Uniform(0, 3))
-#     beta0 = numpyro.sample("beta0", dist.Uniform(0, 6))
-        
     gamma = numpyro.sample("gamma", 
                            dist.Gamma(gamma_shape, gamma_shape * I_duration_mean))    
 
@@ -418,10 +445,8 @@ def SEIR_stochastic(T = 50,
     det_rate = numpyro.sample("det_rate", 
                               dist.Beta(det_rate_mean * det_rate_conc,
                                         (1-det_rate_mean) * det_rate_conc))
-
     
-    SEIR = SEIRModel()
-    x0 = SEIR.seed(N, I0, E0)
+    x0 = SEIRModel.seed(N, I0, E0)
     numpyro.deterministic("x0", x0)
     
     # Split observations into first and rest
@@ -432,7 +457,7 @@ def SEIR_stochastic(T = 50,
     
     params = (beta0, sigma, gamma, det_rate, det_conc, drift_scale)
     
-    beta, x, y = SEIR_dynamics_dev(SEIR, T, params, x0, obs = obs)
+    beta, x, y = SEIR_dynamics(T, params, x0, obs = obs)
     
     x = np.vstack((x0, x))
     y = np.append(y0, y)
@@ -441,7 +466,7 @@ def SEIR_stochastic(T = 50,
         
         params = (beta[-1], sigma, gamma, det_rate, det_conc, drift_scale)
         
-        beta_f, x_f, y_f = SEIR_dynamics_dev(SEIR, T_future+1, params, x[-1,:], suffix="_future")
+        beta_f, x_f, y_f = SEIR_dynamics(T_future+1, params, x[-1,:], suffix="_future")
         
         x = np.vstack((x, x_f))
         y = np.append(y, y_f)
@@ -503,7 +528,7 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model
         if 'y_future' in samples:
             y_future = samples['y_future']
             y = np.concatenate((y, y_future), axis=1)
-        fields['y'] = y[:,:T]
+        fields['y'] = y[:,:T].astype('float32')
     
     fields = {labels[k]: fields[k] for k in plot_fields}
 
