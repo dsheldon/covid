@@ -71,13 +71,13 @@ def _observe_binom_approx(name, latent, det_rate, det_conc, obs=None):
     '''Make observations of a latent variable using BinomialApprox.'''
     
     mask = True
-        
+    
     # Regularization: add reg to observed, and (reg/det_rate) to latent
     # The primary purpose is to avoid zeros, which are invalid values for 
     # the Beta observation model.
     reg = 0.5 
     latent = latent + (reg/det_rate)
-    
+        
     if obs is not None:
         '''
         Workaround for a jax issue: substitute default values
@@ -88,7 +88,7 @@ def _observe_binom_approx(name, latent, det_rate, det_conc, obs=None):
         mask = np.isfinite(obs)
         obs = np.where(mask, obs, 0.5 * latent)
         obs = obs + reg
-    
+
     det_rate = np.broadcast_to(det_rate, latent.shape)        
     det_conc = np.minimum(det_conc, latent) # don't allow it to be *more* concentrated than Binomial
     
@@ -227,7 +227,7 @@ def SIR_dynamics_hierarchical(SIR, T, params, x0, obs = None, suffix=""):
     Run SIR dynamics for T time steps
     '''
     
-    beta0, gamma, det_rate, det_conc, drift_scale = params
+    beta0, gamma, det_rate, det_conc, rw_scale = params
 
     # Add a dimension to these for broadcasting with 2d arrays (num_places x T)
     beta0 = beta0[:,None]
@@ -235,7 +235,7 @@ def SIR_dynamics_hierarchical(SIR, T, params, x0, obs = None, suffix=""):
     
     with numpyro.plate("num_places", beta0.shape[0]):
         beta = numpyro.sample("beta" + suffix, 
-                      ExponentialRandomWalk(loc = beta0, scale=drift_scale, num_steps=T-1))
+                      ExponentialRandomWalk(loc = beta0, scale=rw_scale, num_steps=T-1))
     
 
     # Run ODE
@@ -266,7 +266,7 @@ def SIR_hierarchical(num_places = 1,
                      det_rate_mean = 0.3,
                      det_rate_conc = 50,
                      det_conc = 100,
-                     drift_scale = 5e-2,
+                     rw_scale = 5e-2,
                      obs = None):
     '''
     Hierarchical SIR model
@@ -321,7 +321,7 @@ def SIR_hierarchical(num_places = 1,
     y0 = observe("y0", x0[:,3], det_rate, det_conc, obs=obs0)
         
     # Run dynamics
-    params = (beta0, gamma, det_rate, det_conc, drift_scale)
+    params = (beta0, gamma, det_rate, det_conc, rw_scale)
     beta, x, y = SIR_dynamics_hierarchical(SIR, T, params, x0, obs = obs)
     
     x = np.concatenate((x0[:,None,:], x), axis=1)
@@ -329,7 +329,7 @@ def SIR_hierarchical(num_places = 1,
     
     if T_future > 0:
         
-        params = (beta[:,-1], gamma, det_rate, det_conc, drift_scale)
+        params = (beta[:,-1], gamma, det_rate, det_conc, rw_scale)
         
         beta_f, x_f, y_f = SIR_dynamics_hierarchical(SIR, 
                                                      T_future+1, 
@@ -482,6 +482,154 @@ def SEIR_stochastic(T = 50,
         y = np.append(y, y_f)
         
     return beta, x, y, det_rate
+
+
+
+"""
+************************************************************
+SEIR hierarchical
+************************************************************
+"""
+
+
+def SEIR_dynamics_hierarchical(T, params, x0, obs = None, suffix=""):
+    '''Run SEIR dynamics for T time steps
+    
+    Uses SEIRModel.run to run dynamics with pre-determined parameters.
+    '''
+    
+    beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift = params
+
+    # Add a dimension to these for broadcasting with 2d arrays (num_places x T)
+    beta0 = beta0[:,None]
+    det_rate = det_rate[:,None]
+
+    with numpyro.plate("num_places", beta0.shape[0]):
+        beta = numpyro.sample("beta" + suffix,
+                              ExponentialRandomWalk(loc = beta0,
+                                                    scale = rw_scale,
+                                                    drift = drift, 
+                                                    num_steps = T-1))
+        
+    # Run ODE
+    apply_model = lambda x0, beta, sigma, gamma: SEIRModel.run(T, x0, (beta, sigma, gamma))
+    x = jax.vmap(apply_model)(x0, beta, sigma, gamma)
+
+    x = x[:,1:,:] # drop first time step from result (duplicates initial value)
+    numpyro.deterministic("x" + suffix, x)
+   
+    # Noisy observations
+    y = observe("y" + suffix, x[:,:,4], det_rate, det_conc, obs = obs)
+
+    return beta, x, y
+
+
+from jax.scipy.special import expit, logit
+
+def SEIR_hierarchical(num_places = 1,
+                      T = 50,
+                      N = 1e5,
+                      T_future = 0,
+                      E_duration_mean = 4.0,
+                      I_duration_mean = 2.0,
+                      R0_mean = 3.0,
+                      beta_shape = 1,
+                      sigma_shape = 5,
+                      gamma_shape = 5,
+                      det_rate_mean = 0.3,
+                      det_rate_conc = 50,
+                      det_conc = 100,
+                      rw_scale = 1e-1,
+                      drift_scale = None,
+                      obs = None):
+
+    '''
+    Stochastic SEIR model. Draws random parameters and runs dynamics.
+    '''
+
+  
+    '''Top-level parameters'''
+    log_beta0_base = numpyro.sample("log_beta0_base",
+                                    dist.Normal(np.log(R0_mean/I_duration_mean), 0.2))
+    
+    log_sigma_base = numpyro.sample("log_sigma_base",
+                                    dist.Normal(np.log(1./E_duration_mean), 0.2))
+    
+    log_gamma_base = numpyro.sample("log_gamma_base",
+                                    dist.Normal(np.log(1./I_duration_mean), 0.2))
+    
+    logit_det_rate_base = numpyro.sample("logit_det_rate_base",
+                                            dist.Normal(logit(det_rate_mean), 0.2))
+    
+    beta0_base = numpyro.deterministic("beta0_base", np.exp(log_beta0_base))
+    sigma_base = numpyro.deterministic("sigma_base", np.exp(log_sigma_base))
+    gamma_base = numpyro.deterministic("gamma_base", np.exp(log_gamma_base))
+    det_rate_base = numpyro.deterministic("det_rate_base", expit(logit_det_rate_base))
+    
+    # Broadcast to correct size
+    N = np.broadcast_to(N, (num_places,))
+    
+    '''Place-specific parameters'''
+    with numpyro.plate("num_places", num_places):
+        
+        # Sample initial number of infected individuals
+        I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
+        E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
+                
+        scale = 0.2
+        
+        log_gamma = numpyro.sample("log_gamma",
+                                   dist.Normal(log_gamma_base, scale))
+        
+        log_sigma = numpyro.sample("log_sigma",
+                                   dist.Normal(log_sigma_base, scale))
+        
+        log_beta0 = numpyro.sample("log_beta0",
+                                   dist.Normal(log_beta0_base, 0.4))
+            
+        logit_det_rate = numpyro.sample("logit_det_rate",
+                                        dist.Normal(logit_det_rate_base, scale))
+                
+        beta0 = numpyro.deterministic("beta0", np.exp(log_beta0))
+        sigma = numpyro.deterministic("sigma", np.exp(log_sigma))
+        gamma= numpyro.deterministic("gamma", np.exp(log_gamma))
+        det_rate = numpyro.deterministic("det_rate", expit(logit_det_rate))
+        
+    '''
+    Run model for each place
+    '''
+    x0 = jax.vmap(SEIRModel.seed)(N, I0, E0)
+    numpyro.deterministic("x0", x0)
+    
+    # Split observations into first and rest
+    obs0, obs = (None, None) if obs is None else (obs[:,0], obs[:,1:])
+    
+    # First observation
+    y0 = observe("y0", x0[:,4], det_rate, det_conc, obs=obs0)
+
+    # Run dynamics
+    drift = 0.
+    params = (beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift)
+    beta, x, y = SEIR_dynamics_hierarchical(T, params, x0, obs = obs)
+    
+    x = np.concatenate((x0[:,None,:], x), axis=1)
+    y = np.concatenate((y0[:,None], y), axis=1)
+    
+    if T_future > 0:
+        
+        params = (beta[:,-1], sigma, gamma, det_rate, det_conc, rw_scale, drift)
+        
+        beta_f, x_f, y_f = SEIR_dynamics_hierarchical(T_future+1, 
+                                                      params, 
+                                                      x[:,-1,:], 
+                                                      suffix="_future")
+        
+        x = np.concatenate((x, x_f), axis=1)
+        y = np.concatenate((y, y_f), axis=1)
+        
+    return beta, x, y, det_rate
+
+
 
 
 """
