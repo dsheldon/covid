@@ -530,9 +530,9 @@ def SEIR_hierarchical(num_places = 1,
                       T = 50,
                       N = 1e5,
                       T_future = 0,
-                      E_duration_mean = 4.0,
-                      I_duration_mean = 2.0,
-                      R0_mean = 3.0,
+                      E_duration_mean = 4.5,
+                      I_duration_mean = 3.0,
+                      R0_mean = 4.5,
                       beta_shape = 1,
                       sigma_shape = 5,
                       gamma_shape = 5,
@@ -550,20 +550,23 @@ def SEIR_hierarchical(num_places = 1,
   
     '''Top-level parameters'''
     log_beta0_base = numpyro.sample("log_beta0_base",
-                                    dist.Normal(np.log(R0_mean/I_duration_mean), 0.2))
+                                    dist.Normal(np.log(R0_mean/I_duration_mean), 0.1))
     
     log_sigma_base = numpyro.sample("log_sigma_base",
-                                    dist.Normal(np.log(1./E_duration_mean), 0.2))
+                                    dist.Normal(np.log(1./E_duration_mean), 0.05))
     
     log_gamma_base = numpyro.sample("log_gamma_base",
-                                    dist.Normal(np.log(1./I_duration_mean), 0.2))
+                                    dist.Normal(np.log(1./I_duration_mean), 0.1))
     
     logit_det_rate_base = numpyro.sample("logit_det_rate_base",
-                                            dist.Normal(logit(det_rate_mean), 0.2))
+                                            dist.Normal(logit(det_rate_mean), 0.05))
     
     beta0_base = numpyro.deterministic("beta0_base", np.exp(log_beta0_base))
     sigma_base = numpyro.deterministic("sigma_base", np.exp(log_sigma_base))
     gamma_base = numpyro.deterministic("gamma_base", np.exp(log_gamma_base))
+    
+    print("growth rate", SEIRModel.growth_rate((beta0_base, sigma_base, gamma_base)))
+    
     det_rate_base = numpyro.deterministic("det_rate_base", expit(logit_det_rate_base))
     
     # Broadcast to correct size
@@ -576,7 +579,7 @@ def SEIR_hierarchical(num_places = 1,
         I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
         E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
                 
-        scale = 0.2
+        scale = 0.1
         
         log_gamma = numpyro.sample("log_gamma",
                                    dist.Normal(log_gamma_base, scale))
@@ -588,13 +591,22 @@ def SEIR_hierarchical(num_places = 1,
                                    dist.Normal(log_beta0_base, 0.4))
             
         logit_det_rate = numpyro.sample("logit_det_rate",
-                                        dist.Normal(logit_det_rate_base, scale))
+                                        dist.Normal(logit_det_rate_base, 0.05))
                 
         beta0 = numpyro.deterministic("beta0", np.exp(log_beta0))
         sigma = numpyro.deterministic("sigma", np.exp(log_sigma))
         gamma= numpyro.deterministic("gamma", np.exp(log_gamma))
         det_rate = numpyro.deterministic("det_rate", expit(logit_det_rate))
+
+        print("growth rate", SEIRModel.growth_rate((beta0, sigma, gamma)))
+
         
+        
+    print("beta0", beta0)
+    print("sigma", sigma)
+    print("gamma", gamma)
+    print("det_rate", det_rate)
+    
     '''
     Run model for each place
     '''
