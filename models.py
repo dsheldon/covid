@@ -17,6 +17,18 @@ Shared model / distribution components
 ************************************************************
 """
 
+def GammaMeanDispersion(mu, dispersion):
+    '''Return Gamma distribution with specified mean and dispersion'''
+    shape = 1./dispersion
+    rate = shape/mu
+    return dist.Gamma(shape, rate)
+
+def GammaMeanVar(mu, var):
+    '''Return Gamma distribution with specified mean and variance'''
+    shape = mu**2/var
+    rate = shape/mu
+    return dist.Gamma(shape, rate)
+
 def BinomialApprox(n, p, conc=None):
     '''
     Return distribution that is a continuous approximation to 
@@ -530,16 +542,17 @@ def SEIR_hierarchical(num_places = 1,
                       T = 50,
                       N = 1e5,
                       T_future = 0,
-                      E_duration_mean = 4.5,
-                      I_duration_mean = 3.0,
-                      R0_mean = 4.5,
+                      E_duration_est = 4.5,
+                      I_duration_est = 3.0,
+                      R0_est = 4.5,
                       beta_shape = 1,
                       sigma_shape = 5,
                       gamma_shape = 5,
-                      det_rate_mean = 0.3,
+                      det_rate_est = 0.3,
                       det_rate_conc = 50,
                       det_conc = 100,
                       rw_scale = 1e-1,
+                      place_covariates = None,
                       drift_scale = None,
                       obs = None):
 
@@ -547,30 +560,50 @@ def SEIR_hierarchical(num_places = 1,
     Stochastic SEIR model. Draws random parameters and runs dynamics.
     '''
 
-  
-    '''Top-level parameters'''
-    log_beta0_base = numpyro.sample("log_beta0_base",
-                                    dist.Normal(np.log(R0_mean/I_duration_mean), 0.1))
+    '''Sample coefficients'''    
+    bias_R0 = numpyro.sample("bias_R0", dist.Normal(0, 2.0))
+    bias_E_duration = numpyro.sample("bias_E_duration", dist.Normal(0, 0.25))
+    bias_I_duration = numpyro.sample("bias_I_duration", dist.Normal(0, 0.25))
+    bias_det_rate = numpyro.sample("bias_det_rate", dist.Normal(0, 0.25))
     
-    log_sigma_base = numpyro.sample("log_sigma_base",
-                                    dist.Normal(np.log(1./E_duration_mean), 0.05))
+    scale = 0.1
+    d = place_covariates.shape[1]
+    theta_R0 = numpyro.sample("theta_R0", dist.Normal(0, scale), sample_shape=(d,))
+    theta_E_duration = numpyro.sample("theta_E_duration", dist.Normal(0, scale), sample_shape=(d,))
+    theta_I_duration = numpyro.sample("theta_I_duration", dist.Normal(0, scale), sample_shape=(d,))
+    theta_det_rate = numpyro.sample("theta_det_rate", dist.Normal(0, scale), sample_shape=(d,))
+        
+    X = place_covariates.values
     
-    log_gamma_base = numpyro.sample("log_gamma_base",
-                                    dist.Normal(np.log(1./I_duration_mean), 0.1))
+    '''Sample parameter values'''
+    variance = 0.05
+    R0_mean = np.exp(np.log(R0_est) + bias_R0 + np.dot(X, theta_R0))
+    R0 = numpyro.sample("R0", GammaMeanVar(R0_mean, variance))
+
+    E_duration_mean = np.exp(np.log(E_duration_est) + bias_E_duration + np.dot(X, theta_E_duration))
+    E_duration = numpyro.sample("E_duration", GammaMeanVar(E_duration_mean, variance))
     
-    logit_det_rate_base = numpyro.sample("logit_det_rate_base",
-                                            dist.Normal(logit(det_rate_mean), 0.05))
+    I_duration_mean = np.exp(np.log(I_duration_est) + bias_I_duration + np.dot(X, theta_I_duration))
+    I_duration = numpyro.sample("I_duration", GammaMeanVar(I_duration_mean, variance))
     
-    beta0_base = numpyro.deterministic("beta0_base", np.exp(log_beta0_base))
-    sigma_base = numpyro.deterministic("sigma_base", np.exp(log_sigma_base))
-    gamma_base = numpyro.deterministic("gamma_base", np.exp(log_gamma_base))
+    det_rate_mean = expit(logit(det_rate_est) + bias_det_rate + np.dot(X, theta_det_rate))
+    det_rate = numpyro.sample("det_rate", dist.Beta(det_rate_mean * det_rate_conc, 
+                                                    (1-det_rate_mean) * det_rate_conc))
+
+    sigma = 1/E_duration
+    gamma = 1/I_duration
+    beta0 = R0*gamma
     
-    print("growth rate", SEIRModel.growth_rate((beta0_base, sigma_base, gamma_base)))
-    
-    det_rate_base = numpyro.deterministic("det_rate_base", expit(logit_det_rate_base))
     
     # Broadcast to correct size
     N = np.broadcast_to(N, (num_places,))
+            
+    print("beta0", beta0)
+    print("sigma", sigma)
+    print("gamma", gamma)
+    print("det_rate", det_rate)
+    print("growth rate", SEIRModel.growth_rate((beta0, sigma, gamma)))
+    
     
     '''Place-specific parameters'''
     with numpyro.plate("num_places", num_places):
@@ -578,34 +611,7 @@ def SEIR_hierarchical(num_places = 1,
         # Sample initial number of infected individuals
         I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
         E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
-                
-        scale = 0.1
-        
-        log_gamma = numpyro.sample("log_gamma",
-                                   dist.Normal(log_gamma_base, scale))
-        
-        log_sigma = numpyro.sample("log_sigma",
-                                   dist.Normal(log_sigma_base, scale))
-        
-        log_beta0 = numpyro.sample("log_beta0",
-                                   dist.Normal(log_beta0_base, 0.4))
-            
-        logit_det_rate = numpyro.sample("logit_det_rate",
-                                        dist.Normal(logit_det_rate_base, 0.05))
-                
-        beta0 = numpyro.deterministic("beta0", np.exp(log_beta0))
-        sigma = numpyro.deterministic("sigma", np.exp(log_sigma))
-        gamma= numpyro.deterministic("gamma", np.exp(log_gamma))
-        det_rate = numpyro.deterministic("det_rate", expit(logit_det_rate))
 
-        print("growth rate", SEIRModel.growth_rate((beta0, sigma, gamma)))
-
-        
-        
-    print("beta0", beta0)
-    print("sigma", sigma)
-    print("gamma", gamma)
-    print("det_rate", det_rate)
     
     '''
     Run model for each place
@@ -640,6 +646,122 @@ def SEIR_hierarchical(num_places = 1,
         y = np.concatenate((y, y_f), axis=1)
         
     return beta, x, y, det_rate
+
+
+# def SEIR_hierarchical_bak(num_places = 1,
+#                       T = 50,
+#                       N = 1e5,
+#                       T_future = 0,
+#                       E_duration_mean = 4.5,
+#                       I_duration_mean = 3.0,
+#                       R0_mean = 4.5,
+#                       beta_shape = 1,
+#                       sigma_shape = 5,
+#                       gamma_shape = 5,
+#                       det_rate_mean = 0.3,
+#                       det_rate_conc = 50,
+#                       det_conc = 100,
+#                       rw_scale = 1e-1,
+#                       drift_scale = None,
+#                       obs = None):
+
+#     '''
+#     Stochastic SEIR model. Draws random parameters and runs dynamics.
+#     '''
+
+  
+#     '''Top-level parameters'''
+#     log_beta0_base = numpyro.sample("log_beta0_base",
+#                                     dist.Normal(np.log(R0_mean/I_duration_mean), 0.1))
+    
+#     log_sigma_base = numpyro.sample("log_sigma_base",
+#                                     dist.Normal(np.log(1./E_duration_mean), 0.05))
+    
+#     log_gamma_base = numpyro.sample("log_gamma_base",
+#                                     dist.Normal(np.log(1./I_duration_mean), 0.1))
+    
+#     logit_det_rate_base = numpyro.sample("logit_det_rate_base",
+#                                             dist.Normal(logit(det_rate_mean), 0.05))
+    
+#     beta0_base = numpyro.deterministic("beta0_base", np.exp(log_beta0_base))
+#     sigma_base = numpyro.deterministic("sigma_base", np.exp(log_sigma_base))
+#     gamma_base = numpyro.deterministic("gamma_base", np.exp(log_gamma_base))
+    
+#     print("growth rate", SEIRModel.growth_rate((beta0_base, sigma_base, gamma_base)))
+    
+#     det_rate_base = numpyro.deterministic("det_rate_base", expit(logit_det_rate_base))
+    
+#     # Broadcast to correct size
+#     N = np.broadcast_to(N, (num_places,))
+    
+#     '''Place-specific parameters'''
+#     with numpyro.plate("num_places", num_places):
+        
+#         # Sample initial number of infected individuals
+#         I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
+#         E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
+                
+#         scale = 0.1
+        
+#         log_gamma = numpyro.sample("log_gamma",
+#                                    dist.Normal(log_gamma_base, scale))
+        
+#         log_sigma = numpyro.sample("log_sigma",
+#                                    dist.Normal(log_sigma_base, scale))
+        
+#         log_beta0 = numpyro.sample("log_beta0",
+#                                    dist.Normal(log_beta0_base, 0.4))
+            
+#         logit_det_rate = numpyro.sample("logit_det_rate",
+#                                         dist.Normal(logit_det_rate_base, 0.05))
+                
+#         beta0 = numpyro.deterministic("beta0", np.exp(log_beta0))
+#         sigma = numpyro.deterministic("sigma", np.exp(log_sigma))
+#         gamma= numpyro.deterministic("gamma", np.exp(log_gamma))
+#         det_rate = numpyro.deterministic("det_rate", expit(logit_det_rate))
+
+#         print("growth rate", SEIRModel.growth_rate((beta0, sigma, gamma)))
+
+        
+        
+#     print("beta0", beta0)
+#     print("sigma", sigma)
+#     print("gamma", gamma)
+#     print("det_rate", det_rate)
+    
+#     '''
+#     Run model for each place
+#     '''
+#     x0 = jax.vmap(SEIRModel.seed)(N, I0, E0)
+#     numpyro.deterministic("x0", x0)
+    
+#     # Split observations into first and rest
+#     obs0, obs = (None, None) if obs is None else (obs[:,0], obs[:,1:])
+    
+#     # First observation
+#     y0 = observe("y0", x0[:,4], det_rate, det_conc, obs=obs0)
+
+#     # Run dynamics
+#     drift = 0.
+#     params = (beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift)
+#     beta, x, y = SEIR_dynamics_hierarchical(T, params, x0, obs = obs)
+    
+#     x = np.concatenate((x0[:,None,:], x), axis=1)
+#     y = np.concatenate((y0[:,None], y), axis=1)
+    
+#     if T_future > 0:
+        
+#         params = (beta[:,-1], sigma, gamma, det_rate, det_conc, rw_scale, drift)
+        
+#         beta_f, x_f, y_f = SEIR_dynamics_hierarchical(T_future+1, 
+#                                                       params, 
+#                                                       x[:,-1,:], 
+#                                                       suffix="_future")
+        
+#         x = np.concatenate((x, x_f), axis=1)
+#         y = np.concatenate((y, y_f), axis=1)
+        
+#     return beta, x, y, det_rate
 
 
 

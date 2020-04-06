@@ -1,13 +1,10 @@
 import pandas as pd
 import cachetools.func
 
-def get_url(sheet):
-    book = 'https://docs.google.com/spreadsheets/d/1_mk1J3ElMH5EmPILcrx8s1KqHqdQYXCWroJeKTR3pV4'
-    return f'{book}/gviz/tq?tqx=out:csv&sheet={sheet}'
-
 @cachetools.func.ttl_cache(ttl=3600)
 def uga_traits():
-    traits = pd.read_csv(get_url('state_traits'), thousands = ',')
+    url = 'https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_state_traits.csv'
+    traits = pd.read_csv(url, thousands = ',')
     traits = traits.set_index('postalCode')
     traits.index = traits.index.fillna('tot')  # there is a total line which has values for a few columns
     not_empty = [not traits[c].isnull().all() for c in traits.columns]
@@ -20,6 +17,13 @@ def uga_announcements():
     announcements = pd.read_csv(get_url('state-covid-announcements'))
     return announcements
 
+
+def local_traits():
+    '''Read state traits from a downloaded data file. Currently using uga_traits instead'''
+    traits = pd.read_csv('state-pop.csv')
+    traits['id'] = [states.abbrev[state] for state in traits.State]
+    traits = traits.set_index('id')
+    return traits
 
 states = { # includes DC
         'AK': 'Alaska',
@@ -84,5 +88,6 @@ territories = {
         'VI': 'Virgin Islands'
 }
 
+states_territories = dict(states, **territories)
 
-state_abb = {v: k for k, v in states.items()}
+abbrev = {v: k for k, v in states_territories.items()}

@@ -1,5 +1,5 @@
 import pandas as pd
-from states import states, state_abb
+import states
 #import functools
 import cachetools.func
 import warnings
@@ -10,7 +10,7 @@ def load_and_massage(url):
     df = pd.read_csv(url)
     df = df.drop(columns=['Lat', 'Long'])
     df = df.rename(columns={'Province/State' : 'province', 'Country/Region' : 'country'})    
-    df.province = df.province.replace(state_abb)
+    df.province = df.province.replace(states.abbrev)
     df.province = df.province.fillna('tot')
     df = df.set_index(['country', 'province'])
     df = df.T
