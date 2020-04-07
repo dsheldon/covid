@@ -7,6 +7,7 @@ import numpyro.distributions as dist
 
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 from compartment import SIRModel, SEIRModel
 
@@ -75,10 +76,31 @@ def ExponentialRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
 
 
 def observe(*args, **kwargs):
-    return _observe_binom_approx(*args, **kwargs)
+#    return _observe_binom_approx(*args, **kwargs)
 #    return _observe_beta_binom(*args, **kwargs)
+    return _observe_normal(*args, **kwargs)
 
+def _observe_normal(name, latent, det_rate, det_conc, obs=None):
+    mask = True
 
+    reg = 0.5
+    latent = latent + (reg/det_rate)
+    
+    if obs is not None:
+        mask = np.isfinite(obs)
+        obs = np.where(mask, obs, 0.0)
+        obs += reg
+        
+    det_rate = np.broadcast_to(det_rate, latent.shape)
+        
+    d = dist.Normal(latent * det_rate, latent * 0.2)
+    
+    with numpyro.handlers.mask(mask):
+        y = numpyro.sample(name, d, obs = obs)
+        
+    return y
+
+    
 def _observe_binom_approx(name, latent, det_rate, det_conc, obs=None):
     '''Make observations of a latent variable using BinomialApprox.'''
     
@@ -416,11 +438,13 @@ def SEIR_dynamics(T, params, x0, obs = None, suffix=""):
     x = x[1:] # first entry duplicates x0
     numpyro.deterministic("x" + suffix, x)
 
-    latent = x[:,4]
+    latent = x[:,4] # cumulative cases
 
     # Noisy observations
     y = observe("y" + suffix, x[:,4], det_rate, det_conc, obs = obs)
 
+    #y_hosp = observe(...)
+    
     return beta, x, y
 
 
@@ -550,7 +574,7 @@ def SEIR_hierarchical(num_places = 1,
                       gamma_shape = 5,
                       det_rate_est = 0.3,
                       det_rate_conc = 50,
-                      det_conc = 100,
+                      det_conc = 200,
                       rw_scale = 1e-1,
                       place_covariates = None,
                       drift_scale = None,
@@ -560,31 +584,30 @@ def SEIR_hierarchical(num_places = 1,
     Stochastic SEIR model. Draws random parameters and runs dynamics.
     '''
 
-    '''Sample coefficients'''    
-    bias_R0 = numpyro.sample("bias_R0", dist.Normal(0, 2.0))
-    bias_E_duration = numpyro.sample("bias_E_duration", dist.Normal(0, 0.25))
-    bias_I_duration = numpyro.sample("bias_I_duration", dist.Normal(0, 0.25))
-    bias_det_rate = numpyro.sample("bias_det_rate", dist.Normal(0, 0.25))
-    
-    scale = 0.1
+    '''Sample bias terms'''
+    bias_R0 = numpyro.sample("bias_R0", dist.Normal(0, 0.1))
+    bias_E_duration = numpyro.sample("bias_E_duration", dist.Normal(0, 0.05))
+    bias_I_duration = numpyro.sample("bias_I_duration", dist.Normal(0, 0.05))
+    bias_det_rate = numpyro.sample("bias_det_rate", dist.Normal(0, 0.05))
+
+    '''Sample coefficients'''        
     d = place_covariates.shape[1]
-    theta_R0 = numpyro.sample("theta_R0", dist.Normal(0, scale), sample_shape=(d,))
-    theta_E_duration = numpyro.sample("theta_E_duration", dist.Normal(0, scale), sample_shape=(d,))
-    theta_I_duration = numpyro.sample("theta_I_duration", dist.Normal(0, scale), sample_shape=(d,))
-    theta_det_rate = numpyro.sample("theta_det_rate", dist.Normal(0, scale), sample_shape=(d,))
+    theta_R0 = numpyro.sample("theta_R0", dist.Normal(0, 0.1), sample_shape=(d,))
+    theta_E_duration = numpyro.sample("theta_E_duration", dist.Normal(0, 0.05), sample_shape=(d,))
+    theta_I_duration = numpyro.sample("theta_I_duration", dist.Normal(0, 0.05), sample_shape=(d,))
+    theta_det_rate = numpyro.sample("theta_det_rate", dist.Normal(0, 0.05), sample_shape=(d,))
         
     X = place_covariates.values
     
     '''Sample parameter values'''
-    variance = 0.05
     R0_mean = np.exp(np.log(R0_est) + bias_R0 + np.dot(X, theta_R0))
-    R0 = numpyro.sample("R0", GammaMeanVar(R0_mean, variance))
+    R0 = numpyro.sample("R0", GammaMeanVar(R0_mean, 0.1))
 
     E_duration_mean = np.exp(np.log(E_duration_est) + bias_E_duration + np.dot(X, theta_E_duration))
-    E_duration = numpyro.sample("E_duration", GammaMeanVar(E_duration_mean, variance))
+    E_duration = numpyro.sample("E_duration", GammaMeanVar(E_duration_mean, 0.05))
     
     I_duration_mean = np.exp(np.log(I_duration_est) + bias_I_duration + np.dot(X, theta_I_duration))
-    I_duration = numpyro.sample("I_duration", GammaMeanVar(I_duration_mean, variance))
+    I_duration = numpyro.sample("I_duration", GammaMeanVar(I_duration_mean, 0.05))
     
     det_rate_mean = expit(logit(det_rate_est) + bias_det_rate + np.dot(X, theta_det_rate))
     det_rate = numpyro.sample("det_rate", dist.Beta(det_rate_mean * det_rate_conc, 
@@ -598,13 +621,8 @@ def SEIR_hierarchical(num_places = 1,
     # Broadcast to correct size
     N = np.broadcast_to(N, (num_places,))
             
-    print("beta0", beta0)
-    print("sigma", sigma)
-    print("gamma", gamma)
-    print("det_rate", det_rate)
     print("growth rate", SEIRModel.growth_rate((beta0, sigma, gamma)))
-    
-    
+        
     '''Place-specific parameters'''
     with numpyro.plate("num_places", num_places):
         
@@ -772,11 +790,13 @@ Plotting
 ************************************************************
 """
 
-def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model='SIR'):
+def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, n_samples=0, model='SIR'):
     '''
     Plotting method for SIR-type models. 
     (Needs some refactoring to handle both SIR and SEIR)
     '''
+
+    n_samples = np.minimum(n_samples, samples['x'].shape[0])
     
     T_data = samples['x'].shape[1] + 1
     if 'x_future' in samples:
@@ -824,7 +844,8 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model
     
     fields = {labels[k]: fields[k] for k in plot_fields}
 
-    means = {k: v.mean(axis=0) for k, v in fields.items()}
+    medians = {f'{k} med': np.median(v, axis=0) for k, v in fields.items()}
+    means = {f'{k} mean': np.mean(v, axis=0) for k, v in fields.items()}
     
     pred_intervals = {k: np.percentile(v, (10, 90), axis=0) for k, v in fields.items()}
     
@@ -834,10 +855,84 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, model
     else:
         t = t[:T]
 
+    df = pd.DataFrame(index=t, data=medians)
+    df.plot(ax=ax)    
+
+    colors = [l.get_color() for l in ax.get_lines()]
+    
+    # Add individual field lines
+    if n_samples > 0:
+        i = 0
+        for k, data in fields.items():
+            step = np.array(data.shape[0]/n_samples).astype('int32')
+            df = pd.DataFrame(index=t, data=data[::step,:].T)
+            df.plot(ax=ax, lw=0.25, color=colors[i], alpha=0.25, legend=False)
+            i += 1
+
     df = pd.DataFrame(index=t, data=means)
-    df.plot(ax=ax)
+    df.plot(ax=ax, style='--', color=colors)
     
     # Add prediction intervals
+    ymax = 10
+    i = 0
     for k, pred_interval in pred_intervals.items():
         ax = ax if ax is not None else plt.gca()
-        ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], alpha=0.1)
+        ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], color=colors[i], alpha=0.1, label='CI')
+        ymax = np.maximum(ymax, pred_interval[1,:].max())
+        i+= 1
+    
+    ax.set_ylim([0, ymax])
+    
+    
+def plot_forecast(post_pred_samples, T, confirmed, 
+                  t = None, 
+                  scale='log',
+                  model='SEIR',
+                  n_samples= 100):
+
+    t = t if t is not None else np.arange(T)
+    
+    fig, ax = plt.subplots(nrows=3, figsize=(10,7), sharex=True)
+
+    plot_samples(post_pred_samples, T=T, t=t, ax=ax[0], plot_fields=['y'], model=model)
+    confirmed.plot(ax=ax[0], style='o')
+
+    plot_samples(post_pred_samples, T=T, t=t, ax=ax[1], plot_fields=['C'], model=model, n_samples=n_samples)
+
+    plot_samples(post_pred_samples, T=T, t=t, ax=ax[2], plot_fields=['I'], model=model, n_samples=n_samples)
+
+    [a.axvline(confirmed.index.max(), linestyle='--', alpha=0.5) for a in ax]
+
+    if scale == 'log':
+        for a in ax:
+            a.set_yscale('log')
+
+        # Don't display below 1
+        bottom, top = a.get_ylim()
+        bottom = 1 if bottom < 1 else bottom
+        a.set_ylim(bottom=bottom)
+    
+    return fig, ax
+
+def plot_R0(mcmc_samples, start):
+
+    fig = plt.figure(figsize=(5,3))
+    
+    # Compute average R0 over time
+    gamma = mcmc_samples['gamma'][:,None]
+    beta = mcmc_samples['beta']
+    t = pd.date_range(start=start, periods=beta.shape[1], freq='D')
+    R0 = beta/gamma
+
+    pi = np.percentile(R0, (10, 90), axis=0)
+    df = pd.DataFrame(index=t, data={'R0': np.median(R0, axis=0)})
+    df.plot(style='-o')
+    plt.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
+
+    if save:
+        filename = f'vis/{place}_R0.png'
+        plt.savefig(filename)
+
+    plt.title(place)
+    plt.show()
+        
