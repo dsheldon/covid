@@ -17,6 +17,12 @@
         margin: 0px;
         display: inline;
     }
+    .forecast {
+        width: 650px;
+    }
+    .R0 {
+        width: 350px;
+    }
   </style>
   <body>
     <h1>State SEIR Results</h1>
@@ -45,8 +51,6 @@
 
     function load() {
 
-        console.log("here!")
-        
         var scale = d3.select("#scale").node().value;
         var T = d3.select("#horizon").node().value;
         
@@ -63,6 +67,7 @@
             .attr("src", (d, i) => d + "_predictive_scale_" + scale + "_T_" + T + ".png");
         
         entering.append("img")
+            .attr("class", "R0")
             .attr("src", (d, i) => d + '_R0.png');
 
         divs.selectAll(".forecast")
