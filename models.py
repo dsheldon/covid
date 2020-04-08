@@ -93,7 +93,7 @@ def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     det_rate = np.broadcast_to(det_rate, latent.shape)
 
     mean = det_rate * latent
-    scale = det_noise_scale * mean + 0.01 * latent
+    scale = det_noise_scale * mean + 1
     d = dist.Normal(mean, scale)
     
     with numpyro.handlers.mask(mask):
@@ -565,11 +565,10 @@ def plot_forecast(post_pred_samples, T, confirmed,
         for a in ax:
             a.set_yscale('log')
 
-        # Don't display below 1
-        bottom, top = a.get_ylim()
-        bottom = 1 if bottom < 1 else bottom
-        a.set_ylim(bottom=bottom)
-    
+            # Don't display below 1
+            bottom, top = a.get_ylim()
+            bottom = 1 if bottom < 1 else bottom
+            a.set_ylim(bottom=bottom)   
 
     for y, a in zip(ymax, ax):
         a.set_ylim(top=y)
