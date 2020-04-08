@@ -96,6 +96,8 @@ def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     scale = det_noise_scale * mean + 1
     d = dist.Normal(mean, scale)
     
+    numpyro.deterministic("mean_" + name, mean)
+    
     with numpyro.handlers.mask(mask):
         y = numpyro.sample(name, d, obs = obs)
         
@@ -182,7 +184,7 @@ def SEIR_stochastic(T = 50,
                     gamma_shape = 5,
                     det_rate_est = 0.3,
                     det_rate_conc = 50,
-                    det_noise_scale = 0.3,
+                    det_noise_scale = 0.15,
                     rw_scale = 1e-1,
                     drift_scale = None,
                     obs = None,
