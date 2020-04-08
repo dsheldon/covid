@@ -532,10 +532,10 @@ def plot_forecast(post_pred_samples, T, confirmed,
     t = t if t is not None else np.arange(T)
 
     if use_hosp:
-        fig, ax = plt.subplots(nrows = 4, figsize=(10,10), sharex=True)
+        fig, ax = plt.subplots(nrows = 4, figsize=(8,16), sharex=True)
         ymax = [None] * 5
     else:
-        fig, ax = plt.subplots(nrows = 3, figsize=(10,7), sharex=True)
+        fig, ax = plt.subplots(nrows = 3, figsize=(8,12), sharex=True)
         ymax = [None] * 3
         
     i = 0
@@ -573,6 +573,11 @@ def plot_forecast(post_pred_samples, T, confirmed,
     for y, a in zip(ymax, ax):
         a.set_ylim(top=y)
 
+    for a in ax:
+        a.grid(axis='y')
+        
+    plt.tight_layout()
+        
     return fig, ax
 
 def plot_R0(mcmc_samples, start):
