@@ -576,7 +576,7 @@ def plot_forecast(post_pred_samples, T, confirmed,
     for a in ax:
         a.grid(axis='y')
         
-    plt.tight_layout()
+    #plt.tight_layout()
         
     return fig, ax
 
@@ -595,6 +595,6 @@ def plot_R0(mcmc_samples, start):
     df.plot(style='-o')
     plt.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
 
-    plt.tight_layout()
+    #plt.tight_layout()
 
     return fig

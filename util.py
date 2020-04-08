@@ -224,6 +224,7 @@ def gen_forecasts(data,
             
             name = data[place]['name']
             plt.suptitle(f'{name} {T} days ')
+            plt.tight_layout()
 
             if save:
                 filename = f'{save_path}/{place}_predictive_scale_{scale}_T_{T}.png'
@@ -234,6 +235,8 @@ def gen_forecasts(data,
             
     fig = plot_R0(mcmc_samples, start_)    
     plt.title(place)
+    plt.tight_layout()
+    
     if save:
         filename = f'{save_path}/{place}_R0.png'
         plt.savefig(filename)
