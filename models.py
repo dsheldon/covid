@@ -532,10 +532,10 @@ def plot_forecast(post_pred_samples, T, confirmed,
     t = t if t is not None else np.arange(T)
 
     if use_hosp:
-        fig, ax = plt.subplots(nrows = 4, figsize=(8,16), sharex=True)
+        fig, ax = plt.subplots(nrows = 4, figsize=(8,12), sharex=True)
         ymax = [None] * 5
     else:
-        fig, ax = plt.subplots(nrows = 3, figsize=(8,12), sharex=True)
+        fig, ax = plt.subplots(nrows = 3, figsize=(8,9), sharex=True)
         ymax = [None] * 3
         
     i = 0
@@ -594,5 +594,7 @@ def plot_R0(mcmc_samples, start):
     df = pd.DataFrame(index=t, data={'R0': np.median(R0, axis=0)})
     df.plot(style='-o')
     plt.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
+
+    plt.tight_layout()
 
     return fig
