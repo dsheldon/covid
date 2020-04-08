@@ -79,7 +79,7 @@ def observe(*args, **kwargs):
 #    return _observe_binom_approx(*args, **kwargs)
     return _observe_normal(*args, **kwargs)
 
-def _observe_normal(name, latent, det_rate, det_conc, obs=None):
+def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     mask = True
 
     reg = 0.5
@@ -91,8 +91,10 @@ def _observe_normal(name, latent, det_rate, det_conc, obs=None):
         obs += reg
         
     det_rate = np.broadcast_to(det_rate, latent.shape)
-        
-    d = dist.Normal(latent * det_rate, latent * 0.2)
+
+    mean = latent * det_rate
+    scale = mean * det_noise_scale
+    d = dist.Normal(mean, scale)
     
     with numpyro.handlers.mask(mask):
         y = numpyro.sample(name, d, obs = obs)
@@ -140,13 +142,14 @@ SEIR model
 ************************************************************
 """
 
-def SEIR_dynamics(T, params, x0, obs = None, suffix=""):
+def SEIR_dynamics(T, params, x0, obs=None, hosp=None, use_hosp=False, suffix=""):
     '''Run SEIR dynamics for T time steps
     
     Uses SEIRModel.run to run dynamics with pre-determined parameters.
     '''
     
-    beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift = params
+    beta0, sigma, gamma, rw_scale, drift, \
+    det_rate, det_noise_scale, hosp_rate, hosp_noise_scale  = params
 
     beta = numpyro.sample("beta" + suffix,
                   ExponentialRandomWalk(loc=beta0, scale=rw_scale, drift=drift, num_steps=T-1))
@@ -159,28 +162,35 @@ def SEIR_dynamics(T, params, x0, obs = None, suffix=""):
     latent = x[:,4] # cumulative cases
 
     # Noisy observations
-    y = observe("y" + suffix, x[:,4], det_rate, det_conc, obs = obs)
-
-    #y_hosp = observe(...)
-    
-    return beta, x, y
+    y = observe("y" + suffix, x[:,4], det_rate, det_noise_scale, obs = obs)
+    if use_hosp:
+        z = observe("z" + suffix, x[:,4], hosp_rate, hosp_noise_scale, obs = hosp)
+    else:
+        z = np.zeros_like(y)
+        
+    return beta, x, y, z
 
 
 def SEIR_stochastic(T = 50,
                     N = 1e5,
                     T_future = 0,
-                    E_duration_mean = 4.0,
-                    I_duration_mean = 2.0,
-                    R0_mean = 3.0,
+                    E_duration_est = 4.0,
+                    I_duration_est = 2.0,
+                    R0_est = 3.0,
                     beta_shape = 1,
                     sigma_shape = 5,
                     gamma_shape = 5,
-                    det_rate_mean = 0.3,
+                    det_rate_est = 0.3,
                     det_rate_conc = 50,
-                    det_conc = 100,
+                    det_noise_scale = 0.2,
                     rw_scale = 1e-1,
                     drift_scale = None,
-                    obs = None):
+                    obs = None,
+                    use_hosp = False,
+                    hosp_rate_est = 0.15,
+                    hosp_rate_conc = 30,
+                    hosp_noise_scale = 0.2,
+                    hosp = None):
 
     '''
     Stochastic SEIR model. Draws random parameters and runs dynamics.
@@ -192,17 +202,25 @@ def SEIR_stochastic(T = 50,
     
     # Sample parameters
     sigma = numpyro.sample("sigma", 
-                           dist.Gamma(sigma_shape, sigma_shape * E_duration_mean))
+                           dist.Gamma(sigma_shape, sigma_shape * E_duration_est))
     
     gamma = numpyro.sample("gamma", 
-                           dist.Gamma(gamma_shape, gamma_shape * I_duration_mean))    
+                           dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
 
     beta0 = numpyro.sample("beta0", 
-                          dist.Gamma(beta_shape, beta_shape * I_duration_mean/R0_mean))
+                          dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
         
     det_rate = numpyro.sample("det_rate", 
-                              dist.Beta(det_rate_mean * det_rate_conc,
-                                        (1-det_rate_mean) * det_rate_conc))
+                              dist.Beta(det_rate_est * det_rate_conc,
+                                        (1-det_rate_est) * det_rate_conc))
+
+    if use_hosp:
+        hosp_rate = det_rate * numpyro.sample("hosp_rate", 
+                                               dist.Beta(hosp_rate_est * hosp_rate_conc,
+                                               (1-hosp_rate_est) * hosp_rate_conc))
+    else:
+        hosp_rate = 0.0
+    
     
     if drift_scale is not None:
         drift = numpyro.sample("drift", dist.Normal(loc=0, scale=drift_scale))
@@ -215,27 +233,47 @@ def SEIR_stochastic(T = 50,
     
     # Split observations into first and rest
     obs0, obs = (None, None) if obs is None else (obs[0], obs[1:])
+    if use_hosp:
+        hosp0, hosp = (None, None) if hosp is None else (hosp[0], hosp[1:])
+        
     
     # First observation
-    y0 = observe("y0", x0[4], det_rate, det_conc, obs=obs0)
+    y0 = observe("y0", x0[4], det_rate, det_noise_scale, obs=obs0)
+    if use_hosp:
+        z0 = observe("z0", x0[4], hosp_rate, hosp_noise_scale, obs=hosp0)
+    else:
+        z0 = 0.
+        
+    params = (beta0, sigma, gamma, 
+              rw_scale, drift, 
+              det_rate, det_noise_scale, 
+              hosp_rate, hosp_noise_scale)
     
-    params = (beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift)
-    
-    beta, x, y = SEIR_dynamics(T, params, x0, obs = obs)
+    beta, x, y, z = SEIR_dynamics(T, params, x0, 
+                                  use_hosp = use_hosp,
+                                  obs = obs, 
+                                  hosp = hosp)
     
     x = np.vstack((x0, x))
     y = np.append(y0, y)
+    z = np.append(z0, z)
     
     if T_future > 0:
         
-        params = (beta[-1], sigma, gamma, det_rate, det_conc, rw_scale, drift)
+        params = (beta[-1], sigma, gamma, 
+                  rw_scale, drift, 
+                  det_rate, det_noise_scale, 
+                  hosp_rate, hosp_noise_scale)
         
-        beta_f, x_f, y_f = SEIR_dynamics(T_future+1, params, x[-1,:], suffix="_future")
+        beta_f, x_f, y_f, z_f = SEIR_dynamics(T_future+1, params, x[-1,:], 
+                                              use_hosp = use_hosp,
+                                              suffix="_future")
         
         x = np.vstack((x, x_f))
         y = np.append(y, y_f)
+        z = np.append(z, z_f)
         
-    return beta, x, y, det_rate
+    return beta, x, y, z, det_rate, hosp_rate
 
 
 
@@ -287,13 +325,10 @@ def SEIR_hierarchical(num_places = 1,
                       E_duration_est = 4.5,
                       I_duration_est = 3.0,
                       R0_est = 4.5,
-                      beta_shape = 1,
-                      sigma_shape = 5,
-                      gamma_shape = 5,
                       det_rate_est = 0.3,
                       det_rate_conc = 50,
-                      det_conc = 200,
                       rw_scale = 1e-1,
+                      det_scale = 0.2,
                       place_covariates = None,
                       drift_scale = None,
                       obs = None):
@@ -339,12 +374,10 @@ def SEIR_hierarchical(num_places = 1,
     # Broadcast to correct size
     N = np.broadcast_to(N, (num_places,))
             
-    print("growth rate", SEIRModel.growth_rate((beta0, sigma, gamma)))
-        
     '''Place-specific parameters'''
-    with numpyro.plate("num_places", num_places):
+    with numpyro.plate("num_places", num_places): 
         
-        # Sample initial number of infected individuals
+        # Initial number of infected / exposed individuals
         I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
         E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
 
@@ -359,11 +392,11 @@ def SEIR_hierarchical(num_places = 1,
     obs0, obs = (None, None) if obs is None else (obs[:,0], obs[:,1:])
     
     # First observation
-    y0 = observe("y0", x0[:,4], det_rate, det_conc, obs=obs0)
+    y0 = observe("y0", x0[:,4], det_rate, det_scale, obs=obs0)
 
     # Run dynamics
     drift = 0.
-    params = (beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift)
+    params = (beta0, sigma, gamma, det_rate, det_scale, rw_scale, drift)
     beta, x, y = SEIR_dynamics_hierarchical(T, params, x0, obs = obs)
     
     x = np.concatenate((x0[:,None,:], x), axis=1)
@@ -371,7 +404,7 @@ def SEIR_hierarchical(num_places = 1,
     
     if T_future > 0:
         
-        params = (beta[:,-1], sigma, gamma, det_rate, det_conc, rw_scale, drift)
+        params = (beta[:,-1], sigma, gamma, det_rate, det_scale, rw_scale, drift)
         
         beta_f, x_f, y_f = SEIR_dynamics_hierarchical(T_future+1, 
                                                       params, 
@@ -419,7 +452,8 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, n_sam
         'I': 'infectious',
         'R': 'removed',
         'C': 'total infections',
-        'y': 'total confirmed'
+        'y': 'total confirmed',
+        'z': 'total hospitalized'
     }
 
     if model == 'SIR':
@@ -434,14 +468,15 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, n_sam
               'R': x[:,:T, R],
               'C': x[:,:T, C]}
     
-    if 'y' in samples:
-        y0 = samples['y0'][:, None]
-        y = samples['y']
-        y = np.concatenate((y0, y), axis=1)
-        if 'y_future' in samples:
-            y_future = samples['y_future']
-            y = np.concatenate((y, y_future), axis=1)
-        fields['y'] = y[:,:T].astype('float32')
+    for obs_name in ['y', 'z']:    
+        if obs_name in samples:
+            obs0 = samples[obs_name + '0'][:, None]
+            obs = samples[obs_name]
+            obs = np.concatenate((obs0, obs), axis=1)
+            if obs_name + '_future' in samples:
+                obs_future = samples[obs_name + '_future']
+                obs = np.concatenate((obs, obs_future), axis=1)
+            fields[obs_name] = obs[:,:T].astype('float32')
     
     fields = {labels[k]: fields[k] for k in plot_fields}
 
@@ -483,25 +518,46 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, n_sam
         ymax = np.maximum(ymax, pred_interval[1,:].max())
         i+= 1
     
-    #ax.set_ylim(top=ymax)
+    return ymax
     
     
 def plot_forecast(post_pred_samples, T, confirmed, 
                   t = None, 
                   scale='log',
                   n_samples= 100,
+                  use_hosp = False,
+                  hosp = None,
                   **kwargs):
 
     t = t if t is not None else np.arange(T)
+
+    if use_hosp:
+        fig, ax = plt.subplots(nrows = 4, figsize=(10,10), sharex=True)
+        ymax = [None] * 5
+    else:
+        fig, ax = plt.subplots(nrows = 3, figsize=(10,7), sharex=True)
+        ymax = [None] * 3
+        
+    i = 0
     
-    fig, ax = plt.subplots(nrows=3, figsize=(10,7), sharex=True)
-
-    plot_samples(post_pred_samples, T=T, t=t, ax=ax[0], plot_fields=['y'], **kwargs)
-    confirmed.plot(ax=ax[0], style='o')
-
-    plot_samples(post_pred_samples, T=T, t=t, ax=ax[1], plot_fields=['C'], n_samples=n_samples, **kwargs)
-
-    plot_samples(post_pred_samples, T=T, t=t, ax=ax[2], plot_fields=['I'], n_samples=n_samples, **kwargs)
+    # Confirmed
+    ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['y'], **kwargs)
+    confirmed.plot(ax=ax[i], style='o')
+    i += 1
+    
+    # Cumulative hospitalizations
+    if use_hosp:
+        ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['z'], **kwargs)
+        hosp.plot(ax=ax[i], style='o')
+        i += 1
+    
+    # Cumulative infected
+    ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['C'], n_samples=n_samples, **kwargs)
+    i += 1
+    
+    # Infected
+    ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['I'], n_samples=n_samples, **kwargs)
+    i += 1
 
     [a.axvline(confirmed.index.max(), linestyle='--', alpha=0.5) for a in ax]
 
@@ -512,8 +568,12 @@ def plot_forecast(post_pred_samples, T, confirmed,
         # Don't display below 1
         bottom, top = a.get_ylim()
         bottom = 1 if bottom < 1 else bottom
-        a.set_ylim(bottom=bottom, top=top)
+        a.set_ylim(bottom=bottom)
     
+
+    for y, a in zip(ymax, ax):
+        a.set_ylim(top=y)
+
     return fig, ax
 
 def plot_R0(mcmc_samples, start):
@@ -531,10 +591,4 @@ def plot_R0(mcmc_samples, start):
     df.plot(style='-o')
     plt.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
 
-    if save:
-        filename = f'vis/{place}_R0.png'
-        plt.savefig(filename)
-
-    plt.title(place)
-    plt.show()
-        
+    return fig
