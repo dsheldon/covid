@@ -101,7 +101,7 @@ def run_place(data,
               num_samples = 1000,
               num_chains = 1,
               num_prior_samples = 1000,
-              T_future=25*7,
+              T_future=26*7,
               save_path = 'out'):
 
     prob_model = SEIR_stochastic
