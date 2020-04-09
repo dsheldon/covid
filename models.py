@@ -184,14 +184,14 @@ def SEIR_stochastic(T = 50,
                     gamma_shape = 5,
                     det_rate_est = 0.3,
                     det_rate_conc = 50,
-                    det_noise_scale = 0.1,
+                    det_noise_scale = 0.15,
                     rw_scale = 1e-1,
                     drift_scale = None,
                     obs = None,
                     use_hosp = False,
                     hosp_rate_est = 0.15,
                     hosp_rate_conc = 30,
-                    hosp_noise_scale = 0.2,
+                    hosp_noise_scale = 0.25,
                     hosp = None):
 
     '''
