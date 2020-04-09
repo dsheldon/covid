@@ -98,7 +98,7 @@ def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     
     numpyro.deterministic("mean_" + name, mean)
     
-    with numpyro.handlers.mask(mask):
+    with numpyro.handlers.mask(mask_array=mask):
         y = numpyro.sample(name, d, obs = obs)
         
     return y
@@ -131,7 +131,7 @@ def _observe_binom_approx(name, latent, det_rate, det_conc, obs=None):
     
     d = BinomialApprox(latent + (reg/det_rate), det_rate, det_conc)
     
-    with numpyro.handlers.mask(mask):
+    with numpyro.handlers.mask(mask_array=mask):
         y = numpyro.sample(name, d, obs = obs)
         
     return y
@@ -191,7 +191,7 @@ def SEIR_stochastic(T = 50,
                     use_hosp = False,
                     hosp_rate_est = 0.15,
                     hosp_rate_conc = 30,
-                    hosp_noise_scale = 0.25,
+                    hosp_noise_scale = 0.15,
                     hosp = None):
 
     '''
