@@ -101,6 +101,7 @@ def run_place(data,
               num_samples = 1000,
               num_chains = 1,
               num_prior_samples = 1000,
+              T_future=25*7,
               save_path = 'out'):
 
     prob_model = SEIR_stochastic
@@ -145,7 +146,7 @@ def run_place(data,
     # Posterior predictive samples for visualization
     args['rw_scale'] = 0 # disable random walk for forecasting
     post_pred = Predictive(prob_model, posterior_samples = mcmc_samples)
-    post_pred_samples = post_pred(PRNGKey(2), T_future=100, **args)
+    post_pred_samples = post_pred(PRNGKey(2), T_future=T_future, **args)
 
     if save:
         save_samples(place,
