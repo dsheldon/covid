@@ -292,7 +292,7 @@ def SEIR_dynamics_hierarchical(T, params, x0, obs = None, suffix=""):
     Uses SEIRModel.run to run dynamics with pre-determined parameters.
     '''
     
-    beta0, sigma, gamma, det_rate, det_conc, rw_scale, drift = params
+    beta0, sigma, gamma, det_rate, det_noise_scale, rw_scale, drift = params
 
     # Add a dimension to these for broadcasting with 2d arrays (num_places x T)
     beta0 = beta0[:,None]
@@ -313,7 +313,7 @@ def SEIR_dynamics_hierarchical(T, params, x0, obs = None, suffix=""):
     numpyro.deterministic("x" + suffix, x)
    
     # Noisy observations
-    y = observe("y" + suffix, x[:,:,4], det_rate, det_conc, obs = obs)
+    y = observe("y" + suffix, x[:,:,4], det_rate, det_noise_scale, obs = obs)
 
     return beta, x, y
 
@@ -330,7 +330,7 @@ def SEIR_hierarchical(num_places = 1,
                       det_rate_est = 0.3,
                       det_rate_conc = 50,
                       rw_scale = 1e-1,
-                      det_scale = 0.2,
+                      det_noise_scale = 0.2,
                       place_covariates = None,
                       drift_scale = None,
                       obs = None):
@@ -394,11 +394,11 @@ def SEIR_hierarchical(num_places = 1,
     obs0, obs = (None, None) if obs is None else (obs[:,0], obs[:,1:])
     
     # First observation
-    y0 = observe("y0", x0[:,4], det_rate, det_scale, obs=obs0)
+    y0 = observe("y0", x0[:,4], det_rate, det_noise_scale, obs=obs0)
 
     # Run dynamics
     drift = 0.
-    params = (beta0, sigma, gamma, det_rate, det_scale, rw_scale, drift)
+    params = (beta0, sigma, gamma, det_rate, det_noise_scale, rw_scale, drift)
     beta, x, y = SEIR_dynamics_hierarchical(T, params, x0, obs = obs)
     
     x = np.concatenate((x0[:,None,:], x), axis=1)
@@ -406,7 +406,7 @@ def SEIR_hierarchical(num_places = 1,
     
     if T_future > 0:
         
-        params = (beta[:,-1], sigma, gamma, det_rate, det_scale, rw_scale, drift)
+        params = (beta[:,-1], sigma, gamma, det_rate, det_noise_scale, rw_scale, drift)
         
         beta_f, x_f, y_f = SEIR_dynamics_hierarchical(T_future+1, 
                                                       params, 
