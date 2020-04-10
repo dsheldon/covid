@@ -102,7 +102,8 @@ def run_place(data,
               num_chains = 1,
               num_prior_samples = 1000,
               T_future=26*7,
-              save_path = 'out'):
+              save_path = 'out',
+              **kwargs):
 
     prob_model = SEIR_stochastic
     
@@ -122,6 +123,16 @@ def run_place(data,
         'use_hosp' : use_hosp
     }
 
+    args = dict(args, **kwargs)
+#     args = {
+#         'N': N,
+#         'T': T,
+#         'rw_scale': 2e-1,
+#         'drift_scale': 1e-1, # 5e-2
+#         'use_hosp' : use_hosp
+#     }
+
+    
     kernel = NUTS(prob_model,
                   init_strategy = numpyro.infer.util.init_to_median())
 

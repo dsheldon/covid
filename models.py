@@ -197,7 +197,7 @@ def SEIR_stochastic(T = 50,
     '''
     Stochastic SEIR model. Draws random parameters and runs dynamics.
     '''
-
+    
     # Sample initial number of infected individuals
     I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
     E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
