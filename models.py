@@ -432,7 +432,7 @@ def SEIR_hierarchical(data = None,
         beta_future = R0_future * gamma[:, None]
         beta_future = np.concatenate((beta[:,-1,None], beta_future), axis=1)
         
-        rw_loc = rw[:,-1,None] if rw.ndim > 0 else 1.
+        rw_loc = rw[:,-1,None] if np.ndim(rw) > 0 else 1.
         
         params = (beta_future, sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift)
         

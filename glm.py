@@ -91,7 +91,6 @@ class GLM(object):
         linpred = X @ self.theta
 
         if shape is not None:
-            print(linpred.shape)
             linpred = linpred.reshape(shape)  # reshape to tensor if requested
 
         fwd, inv = self.link()
