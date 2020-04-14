@@ -104,13 +104,22 @@ def future_data(data, T, offset=1):
 
 
 
-def load_state_Xy():
+def load_state_Xy(which=None):
     X_place = states.uga_traits().drop('DC') # incomplete data for DC
     X = states.uga_interventions()
     y = covidtracking.load_us_flat()
     
     Xy = y.join(X, how='inner').sort_index()
+    
+    # Add integer time column
+    start = Xy.index.unique(level=1).min()
+    Xy['t'] = (Xy['date']-start)/pd.Timedelta("1d")
             
+    # Select requested states
+    if states is not None:
+        Xy = Xy.loc[which,:]
+        X_place = X_place.loc[which,:]
+        
     return Xy, X_place
 
 

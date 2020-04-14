@@ -276,7 +276,7 @@ SEIR hierarchical
 """
 
 
-def SEIR_dynamics_hierarchical(T, params, x0, obs = None, suffix=""):
+def SEIR_dynamics_hierarchical(T, params, x0, obs = None, use_rw = True, suffix=""):
     '''Run SEIR dynamics for T time steps
     
     Uses SEIRModel.run to run dynamics with pre-determined parameters.
@@ -292,7 +292,7 @@ def SEIR_dynamics_hierarchical(T, params, x0, obs = None, suffix=""):
     gamma = gamma[:,None]
     det_rate = det_rate[:,None]
     
-    if rw_scale > 0. or drift != 0.0:
+    if use_rw:
         with numpyro.plate("places", num_places):
             rw = numpyro.sample("rw" + suffix,
                                 ExponentialRandomWalk(loc = rw_loc,
@@ -300,7 +300,7 @@ def SEIR_dynamics_hierarchical(T, params, x0, obs = None, suffix=""):
                                                       drift = drift, 
                                                       num_steps = T-1))
     else:
-        rw = 1.
+        rw = rw_loc
 
     beta *= rw
 
@@ -327,7 +327,8 @@ def SEIR_hierarchical(data = None,
                       I_duration_est = 3.0,
                       R0_est = 4.5,
                       det_rate_est = 0.3,
-                      det_rate_conc = 50,
+                      det_rate_conc = 100,
+                      use_rw = True,
                       rw_scale = 1e-1,
                       det_noise_scale = 0.2,
                       drift_scale = None,
@@ -340,12 +341,11 @@ def SEIR_hierarchical(data = None,
     num_places, _ = place_data.shape
     
     '''Generate R0'''
-    R0_glm = GLM("1 + C(state, OneHot) + state_of_emergency + gathering_size_limited + shelter_in_place + Q('non-contact_school') + standardize(popdensity)",
+    R0_glm = GLM("1 + C(state, OneHot) + state_of_emergency + shelter_in_place + Q('non-contact_school') + standardize(popdensity) + state : bs(t, df=3)",
                  data, 
                  log_link,
                  partial(Gamma, var=0.1),
                  prior = dist.Normal(0, 0.1),
-#                    term_priors = [dist.Normal(0, 0.1), dist.Normal(0, 0.1), dist.Normal(0, 0.1)],
                  guess=R0_est,
                  name="R0")
     
@@ -375,7 +375,7 @@ def SEIR_hierarchical(data = None,
                    place_data,
                    logit_link,
                    partial(Beta, conc=det_rate_conc),
-                   prior=dist.Normal(0, 0.05),
+                   prior=dist.Normal(0, 0.025),
                    guess=det_rate_est,
                    name="det_rate")[0]
     
@@ -418,7 +418,9 @@ def SEIR_hierarchical(data = None,
     drift = 0.
     rw_loc = 1.
     params = (beta[:,:-1], sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift)
-    rw, x, y = SEIR_dynamics_hierarchical(T, params, x0, obs = obs)
+    rw, x, y = SEIR_dynamics_hierarchical(T, params, x0, 
+                                          use_rw = use_rw, 
+                                          obs = obs)
     
     x = np.concatenate((x0[:,None,:], x), axis=1)
     y = np.concatenate((y0[:,None], y), axis=1)
@@ -432,13 +434,14 @@ def SEIR_hierarchical(data = None,
         beta_future = R0_future * gamma[:, None]
         beta_future = np.concatenate((beta[:,-1,None], beta_future), axis=1)
         
-        rw_loc = rw[:,-1,None] if np.ndim(rw) > 0 else 1.
+        rw_loc = rw[:,-1,None] if use_rw else 1.
         
         params = (beta_future, sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift)
         
         _, x_f, y_f = SEIR_dynamics_hierarchical(T_future+1, 
                                                  params, 
                                                  x[:,-1,:], 
+                                                 use_rw = use_rw,
                                                  suffix="_future")
         
         x = np.concatenate((x, x_f), axis=1)
