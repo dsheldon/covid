@@ -17,8 +17,6 @@ import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
 
-
-
 def load_world_data():
     # world data
     world = jhu.load_world()
@@ -90,6 +88,32 @@ def load_data():
     pop = dict(pop, **state_pop)
     
     return data, pop, place_names, state_pop
+
+
+def future_data(data, T, offset=1):
+    '''Projects data frame with (place, time) MultiIndex into future by
+       repeating final time value for each place'''
+    data = data.unstack(0)
+    start = data.index.max() + pd.Timedelta(offset, "D")
+    future = pd.date_range(start=start, periods=T, freq="D")
+    data = data.reindex(future, method='nearest')
+    data = data.stack()
+    data.index = data.index.swaplevel(0, 1)
+    data = data.sort_index()
+    return data
+
+
+
+def load_state_Xy():
+    X_place = states.uga_traits().drop('DC') # incomplete data for DC
+    X = states.uga_interventions()
+    y = covidtracking.load_us_flat()
+    
+    Xy = y.join(X, how='inner').sort_index()
+            
+    return Xy, X_place
+
+
 
 
 def run_place(data, 
