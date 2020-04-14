@@ -341,6 +341,8 @@ def SEIR_hierarchical(data = None,
     num_places, _ = place_data.shape
     
     '''Generate R0'''
+    ## TODO: forecasting with splines not yet supported b/c patsy will not evaluate
+    ## splines outside of the outermost knots. Look into workaround/fix for this
     R0_glm = GLM("1 + C(state, OneHot) + state_of_emergency + shelter_in_place + Q('non-contact_school') + standardize(popdensity) + state : bs(t, df=3)",
                  data, 
                  log_link,

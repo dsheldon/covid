@@ -94,9 +94,11 @@ def future_data(data, T, offset=1):
     '''Projects data frame with (place, time) MultiIndex into future by
        repeating final time value for each place'''
     data = data.unstack(0)
+    orig_start = data.index.min()
     start = data.index.max() + pd.Timedelta(offset, "D")
     future = pd.date_range(start=start, periods=T, freq="D")
     data = data.reindex(future, method='nearest')
+    data['t'] = (data.index-orig_start)/pd.Timedelta("1d")
     data = data.stack()
     data.index = data.index.swaplevel(0, 1)
     data = data.sort_index()
@@ -116,7 +118,7 @@ def load_state_Xy(which=None):
     Xy['t'] = (Xy['date']-start)/pd.Timedelta("1d")
             
     # Select requested states
-    if states is not None:
+    if which is not None:
         Xy = Xy.loc[which,:]
         X_place = X_place.loc[which,:]
         
