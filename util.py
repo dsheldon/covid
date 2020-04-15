@@ -4,7 +4,7 @@ import covidtracking
 import states
 import sys
 
-from models import SEIR_stochastic, plot_forecast, plot_R0
+import models
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -140,7 +140,7 @@ def run_place(data,
               save_path = 'out',
               **kwargs):
 
-    prob_model = SEIR_stochastic
+    prob_model = models.SEIR_stochastic
     
     print(f"******* {place} *********")
     
@@ -263,7 +263,7 @@ def gen_forecasts(data,
 
             t = pd.date_range(start=start_, periods=T, freq='D')
 
-            fig, ax = plot_forecast(post_pred_samples, T, confirmed, 
+            fig, ax = models.plot_forecast(post_pred_samples, T, confirmed, 
                                     t = t, 
                                     scale = scale, 
                                     use_hosp = use_hosp, 
@@ -280,7 +280,7 @@ def gen_forecasts(data,
             if show:
                 plt.show()
             
-    fig = plot_R0(mcmc_samples, start_)    
+    fig = models.plot_R0(mcmc_samples, start_)    
     plt.title(place)
     plt.tight_layout()
     

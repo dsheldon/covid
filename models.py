@@ -343,7 +343,7 @@ def SEIR_hierarchical(data = None,
     '''Generate R0'''
     ## TODO: forecasting with splines not yet supported b/c patsy will not evaluate
     ## splines outside of the outermost knots. Look into workaround/fix for this
-    R0_glm = GLM("1 + C(state, OneHot) + state_of_emergency + shelter_in_place + Q('non-contact_school') + standardize(popdensity) + state : bs(t, df=3)",
+    R0_glm = GLM("1 + C(state, OneHot) + state_of_emergency + shelter_in_place + Q('non-contact_school') + standardize(popdensity) + state : cr(t, df=3)", 
                  data, 
                  log_link,
                  partial(Gamma, var=0.1),
@@ -459,7 +459,16 @@ Plotting
 ************************************************************
 """
 
-def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, n_samples=0, model='SEIR'):
+def plot_samples(samples, 
+                 plot_fields=['I', 'y'], 
+                 T=None, 
+                 t=None, 
+                 ax=None, 
+                 n_samples=0,
+                 plot_median=True,
+                 plot_mean=False,
+                 legend=True,
+                 model='SEIR'):
     '''
     Plotting method for SIR-type models. 
     (Needs some refactoring to handle both SIR and SEIR)
@@ -527,9 +536,10 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, n_sam
         t = t[:T]
 
     ax = ax if ax is not None else plt.gca()
-        
-    df = pd.DataFrame(index=t, data=medians)
-    df.plot(ax=ax)    
+    
+    if plot_median:
+        df = pd.DataFrame(index=t, data=medians)
+        df.plot(ax=ax, legend=legend)    
 
     colors = [l.get_color() for l in ax.get_lines()]
     
@@ -542,8 +552,9 @@ def plot_samples(samples, plot_fields=['I', 'y'], T=None, t=None, ax=None, n_sam
             df.plot(ax=ax, lw=0.25, color=colors[i], alpha=0.25, legend=False)
             i += 1
 
-    df = pd.DataFrame(index=t, data=means)
-    df.plot(ax=ax, style='--', color=colors)
+    if plot_mean:
+        df = pd.DataFrame(index=t, data=means)
+        df.plot(ax=ax, style='--', color=colors, legend=legend)
     
     # Add prediction intervals
     ymax = 10
