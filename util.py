@@ -113,6 +113,12 @@ def load_state_Xy(which=None):
     
     Xy = y.join(X, how='inner').sort_index()
     
+    # Remove dates without enough data
+    date = Xy.index.get_level_values(1)
+    counts = Xy.groupby(date).apply(lambda x: len(x))
+    good_dates = counts.index[counts == counts.max()]
+    Xy = Xy.loc[date.isin(good_dates)]
+        
     # Add integer time column
     start = Xy.index.unique(level=1).min()
     Xy['t'] = (Xy['date']-start)/pd.Timedelta("1d")
