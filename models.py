@@ -134,31 +134,30 @@ SEIR model
 ************************************************************
 """
 
-def SEIR_dynamics(T, params, x0, obs=None, hosp=None, use_hosp=False, suffix=""):
+def SEIR_dynamics(T, params, x0, obs=None, death=None, use_hosp=False, suffix=""):
     '''Run SEIR dynamics for T time steps
     
     Uses SEIRModel.run to run dynamics with pre-determined parameters.
     '''
     
     beta0, sigma, gamma, rw_scale, drift, \
-    det_rate, det_noise_scale, hosp_rate, hosp_noise_scale  = params
+    det_rate, det_noise_scale, hosp_rate, death_rate, det_rate_d  = params
 
     beta = numpyro.sample("beta" + suffix,
                   ExponentialRandomWalk(loc=beta0, scale=rw_scale, drift=drift, num_steps=T-1))
 
     # Run ODE
-    x = SEIRModel.run(T, x0, (beta, sigma, gamma))
+    x = SEIRModel.run(T, x0, (beta, sigma, gamma, hosp_rate, death_rate))
     x = x[1:] # first entry duplicates x0
     numpyro.deterministic("x" + suffix, x)
 
-    latent = x[:,4] # cumulative cases
+    latent = x[:,6] # cumulative cases
 
     # Noisy observations
-    y = observe("y" + suffix, x[:,4], det_rate, det_noise_scale, obs = obs)
-    if use_hosp:
-        z = observe("z" + suffix, x[:,4], hosp_rate, hosp_noise_scale, obs = hosp)
-    else:
-        z = np.zeros_like(y)
+    y = observe("y" + suffix, x[:,6], det_rate, det_noise_scale, obs = obs)
+   
+    z = observe("z" + suffix, x[:,5], det_rate_d, det_noise_scale, obs = death)
+  
         
     return beta, x, y, z
 
@@ -178,6 +177,7 @@ def SEIR_stochastic(T = 50,
                     rw_scale = 1e-1,
                     drift_scale = None,
                     obs = None,
+                    death=None,
                     use_hosp = False,
                     hosp_rate_est = 0.15,
                     hosp_rate_conc = 30,
@@ -205,13 +205,19 @@ def SEIR_stochastic(T = 50,
     det_rate = numpyro.sample("det_rate", 
                               dist.Beta(det_rate_est * det_rate_conc,
                                         (1-det_rate_est) * det_rate_conc))
+    det_rate_d = numpyro.sample("det_rate_d", 
+                               dist.Beta(.9 * 100,
+                                        (1-.9) * 100))
+    
+    hosp_rate = numpyro.sample("hosp_rate", 
+                              dist.Beta(.1 * 100,
+                                        (1-.1) * 100))
+    death_rate = numpyro.sample("death_rate", 
+                             dist.Beta(.1 * 100,
+                                        (1-.1) * 100))
+    
 
-    if use_hosp:
-        hosp_rate = det_rate * numpyro.sample("hosp_rate", 
-                                               dist.Beta(hosp_rate_est * hosp_rate_conc,
-                                               (1-hosp_rate_est) * hosp_rate_conc))
-    else:
-        hosp_rate = 0.0
+  
     
     
     if drift_scale is not None:
@@ -225,26 +231,24 @@ def SEIR_stochastic(T = 50,
     
     # Split observations into first and rest
     obs0, obs = (None, None) if obs is None else (obs[0], obs[1:])
-    if use_hosp:
-        hosp0, hosp = (None, None) if hosp is None else (hosp[0], hosp[1:])
-        
+    death0, death = (None, None) if death is None else (death[0], death[1:])
+
     
     # First observation
-    y0 = observe("y0", x0[4], det_rate, det_noise_scale, obs=obs0)
-    if use_hosp:
-        z0 = observe("z0", x0[4], hosp_rate, hosp_noise_scale, obs=hosp0)
-    else:
-        z0 = 0.
+    y0 = observe("y0", x0[6], det_rate, det_noise_scale, obs=obs0)
+    z0 = observe("z0", x0[5], det_rate_d, det_noise_scale, obs=death0)
+
+   
         
     params = (beta0, sigma, gamma, 
               rw_scale, drift, 
               det_rate, det_noise_scale, 
-              hosp_rate, hosp_noise_scale)
+              hosp_rate,death_rate,det_rate_d)
     
     beta, x, y, z = SEIR_dynamics(T, params, x0, 
                                   use_hosp = use_hosp,
                                   obs = obs, 
-                                  hosp = hosp)
+                                  death = death)
     
     x = np.vstack((x0, x))
     y = np.append(y0, y)
@@ -255,7 +259,7 @@ def SEIR_stochastic(T = 50,
         params = (beta[-1], sigma, gamma, 
                   rw_scale, drift, 
                   det_rate, det_noise_scale, 
-                  hosp_rate, hosp_noise_scale)
+                  hosp_rate, death_rate, det_rate_d)
         
         beta_f, x_f, y_f, z_f = SEIR_dynamics(T_future+1, params, x[-1,:], 
                                               use_hosp = use_hosp,
@@ -405,7 +409,7 @@ def SEIR_hierarchical(data = None,
     hosp_rate = glm('1 + C(state, OneHot)',
                      place_data,
                      log_link,
-                     partial(Gamma, var=0.05),
+                     partial(Beta, conc=100),
                      prior=dist.Normal(.1, 0.5),
                      guess=I_duration_est,
                      name="hosp_rate")[0]

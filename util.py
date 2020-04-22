@@ -136,10 +136,10 @@ def load_state_Xy(which=None):
 def run_place(data, 
               place, 
               start = '2020-03-04',
-              use_hosp = True, 
+              use_hosp = False, 
               save = True,
               num_warmup = 1000,
-              num_samples = 1000,
+              num_samples = 100,
               num_chains = 1,
               num_prior_samples = 1000,
               T_future=26*7,
@@ -151,7 +151,7 @@ def run_place(data,
     print(f"******* {place} *********")
     
     confirmed = data[place]['data'].confirmed[start:]
-    hosp = data[place]['data'].hospitalizedCumulative[start:]
+    death = data[place]['data'].death[start:]
     start = confirmed.index.min()
 
     T = len(confirmed)
@@ -185,7 +185,7 @@ def run_place(data,
     print("Running MCMC")
     mcmc.run(jax.random.PRNGKey(2),
              obs = confirmed.values,
-             hosp = hosp.values,
+             death = death.values,
              **args)
 
     mcmc.print_summary()
@@ -256,7 +256,7 @@ def gen_forecasts(data,
                   show = True):
     
     confirmed = data[place]['data'].confirmed[start:]
-    hosp = data[place]['data'].hospitalizedCumulative[start:]
+    death = data[place]['data'].death[start:]
     start_ = confirmed.index.min()
 
     T = len(confirmed)
@@ -273,7 +273,7 @@ def gen_forecasts(data,
                                     t = t, 
                                     scale = scale, 
                                     use_hosp = use_hosp, 
-                                    hosp = hosp)
+                                    death = death)
             
             name = data[place]['name']
             plt.suptitle(f'{name} {T} days ')
