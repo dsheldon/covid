@@ -387,7 +387,7 @@ def SEIR_hierarchical(data = None,
                    place_data,
                    logit_link,
                    partial(Beta, conc=det_rate_conc),
-                   prior=dist.Normal(1, 0.025),
+                   prior=dist.Normal(.95, 0.1),
                    guess=.95,
                    name="det_rate_d")[0]
     
@@ -396,7 +396,7 @@ def SEIR_hierarchical(data = None,
                      place_data,
                      log_link,
                      partial(Gamma, var=0.05),
-                     prior=dist.Normal(np.log(.1), 0.5),
+                     prior=dist.Normal(.1, 0.5),
                      guess=I_duration_est,
                      name="death_rate")[0]
 
@@ -406,7 +406,7 @@ def SEIR_hierarchical(data = None,
                      place_data,
                      log_link,
                      partial(Gamma, var=0.05),
-                     prior=dist.Normal(np.log(.1), 0.5),
+                     prior=dist.Normal(.1, 0.5),
                      guess=I_duration_est,
                      name="hosp_rate")[0]
     # Broadcast to correct size
@@ -530,6 +530,8 @@ def plot_samples(samples,
         'S': 'susceptible',
         'I': 'infectious',
         'R': 'removed',
+        'H': 'hospitalized',
+        'D': 'dead',
         'C': 'total infections',
         'y': 'total confirmed',
         'z': 'total hospitalized'
@@ -538,7 +540,7 @@ def plot_samples(samples,
     if model == 'SIR':
         S, I, R, C = 0, 1, 2, 3
     elif model == 'SEIR':
-        S, E, I, R, C = 0, 1, 2, 3, 4
+        S, E, I, R, H, D, C = 0, 1, 2, 3, 4, 5, 6
     else:
         raise ValueError("Bad model")
     
@@ -606,8 +608,8 @@ def plot_forecast(post_pred_samples, T, confirmed,
                   t = None, 
                   scale='log',
                   n_samples= 100,
-                  use_hosp = False,
-                  hosp = None,
+                  use_hosp = True,
+                  death = None,
                   **kwargs):
 
     t = t if t is not None else np.arange(T)
@@ -629,7 +631,7 @@ def plot_forecast(post_pred_samples, T, confirmed,
     # Cumulative hospitalizations
     if use_hosp:
         ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['z'], **kwargs)
-        hosp.plot(ax=ax[i], style='o')
+        death.plot(ax=ax[i], style='o')
         i += 1
     
     # Cumulative infected
