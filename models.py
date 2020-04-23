@@ -603,7 +603,7 @@ def plot_forecast(post_pred_samples, T, confirmed,
     
     if daily:
         variables = ['daily confirmed', 'daily deaths']
-        w = 5
+        w = 7
         min_periods = 1
         observations = [confirmed.diff().rolling(w, min_periods=min_periods, center=True).mean(), 
                         death.diff().rolling(w, min_periods=min_periods, center=True).mean()]
