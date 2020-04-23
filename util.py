@@ -1,4 +1,3 @@
-import jax.numpy as np
 import jhu
 import covidtracking
 import states
@@ -136,7 +135,8 @@ def load_state_Xy(which=None):
 def run_place(data, 
               place, 
               start = '2020-03-04',
-              use_hosp = False, 
+              confirmed_min = 10,
+              death_min = 10,
               save = True,
               num_warmup = 1000,
               num_samples = 100,
@@ -154,25 +154,19 @@ def run_place(data,
     death = data[place]['data'].death[start:]
     start = confirmed.index.min()
 
+    confirmed[confirmed < confirmed_min] = np.nan
+    death[death < death_min] = np.nan
+    
     T = len(confirmed)
     N = data[place]['pop']
 
     args = {
         'N': N,
         'T': T,
-        'rw_scale': 2e-1,
-        'use_hosp' : use_hosp
+        'rw_scale': 2e-1
     }
 
     args = dict(args, **kwargs)
-#     args = {
-#         'N': N,
-#         'T': T,
-#         'rw_scale': 2e-1,
-#         'drift_scale': 1e-1, # 5e-2
-#         'use_hosp' : use_hosp
-#     }
-
     
     kernel = NUTS(prob_model,
                   init_strategy = numpyro.infer.util.init_to_median())
@@ -252,8 +246,8 @@ def gen_forecasts(data,
                   load_path = 'out',
                   save_path = 'vis',
                   save = True,
-                  use_hosp = True,
-                  show = True):
+                  show = True, 
+                  **kwargs):
     
     confirmed = data[place]['data'].confirmed[start:]
     death = data[place]['data'].death[start:]
@@ -272,8 +266,8 @@ def gen_forecasts(data,
             fig, ax = models.plot_forecast(post_pred_samples, T, confirmed, 
                                     t = t, 
                                     scale = scale, 
-                                    use_hosp = use_hosp, 
-                                    death = death)
+                                    death = death,
+                                    **kwargs)
             
             name = data[place]['name']
             plt.suptitle(f'{name} {T} days ')

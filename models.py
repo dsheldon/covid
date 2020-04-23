@@ -1,3 +1,5 @@
+import numpy as onp
+
 import jax
 import jax.numpy as np
 from jax.experimental.ode import odeint
@@ -134,7 +136,7 @@ SEIR model
 ************************************************************
 """
 
-def SEIR_dynamics(T, params, x0, obs=None, death=None, use_hosp=False, suffix=""):
+def SEIR_dynamics(T, params, x0, obs=None, death=None, suffix=""):
     '''Run SEIR dynamics for T time steps
     
     Uses SEIRModel.run to run dynamics with pre-determined parameters.
@@ -178,7 +180,6 @@ def SEIR_stochastic(T = 50,
                     drift_scale = None,
                     obs = None,
                     death=None,
-                    use_hosp = False,
                     hosp_rate_est = 0.15,
                     hosp_rate_conc = 30,
                     hosp_noise_scale = 0.15,
@@ -246,7 +247,6 @@ def SEIR_stochastic(T = 50,
               hosp_rate,death_rate,det_rate_d)
     
     beta, x, y, z = SEIR_dynamics(T, params, x0, 
-                                  use_hosp = use_hosp,
                                   obs = obs, 
                                   death = death)
     
@@ -262,7 +262,6 @@ def SEIR_stochastic(T = 50,
                   hosp_rate, death_rate, det_rate_d)
         
         beta_f, x_f, y_f, z_f = SEIR_dynamics(T_future+1, params, x[-1,:], 
-                                              use_hosp = use_hosp,
                                               suffix="_future")
         
         x = np.vstack((x, x_f))
@@ -498,6 +497,26 @@ Plotting
 ************************************************************
 """
 
+def combine_samples(samples, fields=['x', 'y', 'z', 'mean_y', 'mean_z']):
+    '''Combine x0, x, x_future and similar fields into a single array'''
+
+    samples = samples.copy()
+    
+    for f in fields:
+        if f in samples:
+            f0, f_future = f + '0', f + '_future'
+            data = np.concatenate((samples[f0][:,None], samples[f]), axis=1)
+            del samples[f0]
+            
+            if f_future in samples:
+                data = np.concatenate((data, samples[f_future]), axis=1)
+                del samples[f_future]
+            
+            samples[f] = data
+    
+    return samples
+
+
 def plot_samples(samples, 
                  plot_fields=['I', 'y'], 
                  T=None, 
@@ -511,34 +530,13 @@ def plot_samples(samples,
     (Needs some refactoring to handle both SIR and SEIR)
     '''
 
+    samples = combine_samples(samples)
     n_samples = np.minimum(n_samples, samples['x'].shape[0])
     
-    T_data = samples['x'].shape[1] + 1
-    if 'x_future' in samples:
-        T_data += samples['x_future'].shape[1]
-    
+    T_data = samples['x'].shape[1]
     if T is None or T > T_data:
         T = T_data
-
-    x0 = samples['x0'][:, None]
-    x = samples['x']
-    x = np.concatenate((x0, x), axis=1)
-
-    if 'x_future' in samples:
-        x_future = samples['x_future']
-        x = np.concatenate((x, x_future), axis=1)
     
-    labels = {
-        'S': 'susceptible',
-        'I': 'infectious',
-        'R': 'removed',
-        'H': 'hospitalized',
-        'D': 'dead',
-        'C': 'total infections',
-        'y': 'total confirmed',
-        'z': 'total hospitalized'
-    }
-
     if model == 'SIR':
         S, I, R, C = 0, 1, 2, 3
     elif model == 'SEIR':
@@ -546,36 +544,26 @@ def plot_samples(samples,
     else:
         raise ValueError("Bad model")
     
-    fields = {'S': x[:,:T, S],
-              'I': x[:,:T, I],
-              'R': x[:,:T, R],
-              'C': x[:,:T, C]}
-    
-    for obs_name in ['y', 'z']:    
-        if obs_name in samples:
-            obs0 = samples[obs_name + '0'][:, None]
-            obs = samples[obs_name]
-            obs = np.concatenate((obs0, obs), axis=1)
-            if obs_name + '_future' in samples:
-                obs_future = samples[obs_name + '_future']
-                obs = np.concatenate((obs, obs_future), axis=1)
-            fields[obs_name] = obs[:,:T].astype('float32')
-    
-    fields = {labels[k]: fields[k] for k in plot_fields}
+    fields = {'susceptible'     : samples['x'][:,:T, S],
+              'infectious'      : samples['x'][:,:T, I],
+              'removed'         : samples['x'][:,:T, R],
+              'total infectious': samples['x'][:,:T, C],
+              'total confirmed' : samples['y'][:,:T],
+              'total deaths'    : samples['z'][:,:T],
+              'daily confirmed' : onp.diff(samples['mean_y'][:,:T], axis=1, prepend=np.nan),
+              'daily deaths'    : onp.diff(samples['mean_z'][:,:T], axis=1, prepend=np.nan)}
+                  
+    fields = {k: fields[k] for k in plot_fields}
 
-    medians = {f'{k} med': np.median(v, axis=0) for k, v in fields.items()}    
+    medians = {k: np.median(v, axis=0) for k, v in fields.items()}    
     pred_intervals = {k: np.percentile(v, (10, 90), axis=0) for k, v in fields.items()}
     
-    # Use pandas to plot means (for better date handling)
-    if t is None:
-        t = np.arange(T)
-    else:
-        t = t[:T]
-
+    t = np.arange(T) if t is None else t[:T]
+    
     ax = ax if ax is not None else plt.gca()
     
     df = pd.DataFrame(index=t, data=medians)
-    df.plot(ax=ax, legend=legend)    
+    df.plot(ax=ax, legend=legend)
     median_max = df.max().values
     
     colors = [l.get_color() for l in ax.get_lines()]
@@ -594,7 +582,7 @@ def plot_samples(samples,
     i = 0
     for k, pred_interval in pred_intervals.items():
         ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], color=colors[i], alpha=0.1, label='CI')
-        pi_max = np.maximum(pi_max, pred_interval[1,:].max())
+        pi_max = np.maximum(pi_max, np.nanmax(pred_interval[1,:]))
         i+= 1
     
     return median_max, pi_max
@@ -604,18 +592,25 @@ def plot_forecast(post_pred_samples, T, confirmed,
                   t = None, 
                   scale='log',
                   n_samples= 100,
-                  use_hosp = True,
                   death = None,
+                  daily = False,
                   **kwargs):
 
     t = t if t is not None else np.arange(T)
 
     fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)
-
     
-    variables = ['y', 'z']
-    observations = [confirmed, death]
     
+    if daily:
+        variables = ['daily confirmed', 'daily deaths']
+        w = 5
+        min_periods = 1
+        observations = [confirmed.diff().rolling(w, min_periods=min_periods, center=True).mean(), 
+                        death.diff().rolling(w, min_periods=min_periods, center=True).mean()]
+    else:
+        variables = ['total confirmed', 'total deaths']
+        observations = [confirmed, death]
+        
     for variable, observation, ax in zip(variables, observations, axes):
     
         median_max, pi_max = plot_samples(post_pred_samples, T=T, t=t, ax=ax, plot_fields=[variable], **kwargs)
