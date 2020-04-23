@@ -391,7 +391,7 @@ def SEIR_hierarchical(data = None,
                    place_data,
                    logit_link,
                    partial(Beta, conc=det_rate_conc),
-                   prior=dist.Normal(.95, 0.1),
+                   prior=dist.Normal(0, 0.1),
                    guess=.95,
                    name="det_rate_d")[0]
     
@@ -400,7 +400,7 @@ def SEIR_hierarchical(data = None,
                      place_data,
                      log_link,
                      partial(Gamma, var=0.05),
-                     prior=dist.Normal(.1, 0.5),
+                     prior=dist.Normal(0, 0.5),
                      guess=I_duration_est,
                      name="death_rate")[0]
 
@@ -410,7 +410,7 @@ def SEIR_hierarchical(data = None,
                      place_data,
                      log_link,
                      partial(Beta, conc=100),
-                     prior=dist.Normal(.1, 0.5),
+                     prior=dist.Normal(0, 0.5),
                      guess=I_duration_est,
                      name="hosp_rate")[0]
     # Broadcast to correct size
@@ -504,8 +504,6 @@ def plot_samples(samples,
                  t=None, 
                  ax=None, 
                  n_samples=0,
-                 plot_median=True,
-                 plot_mean=False,
                  legend=True,
                  model='SEIR'):
     '''
@@ -565,9 +563,7 @@ def plot_samples(samples,
     
     fields = {labels[k]: fields[k] for k in plot_fields}
 
-    medians = {f'{k} med': np.median(v, axis=0) for k, v in fields.items()}
-    means = {f'{k} mean': np.mean(v, axis=0) for k, v in fields.items()}
-    
+    medians = {f'{k} med': np.median(v, axis=0) for k, v in fields.items()}    
     pred_intervals = {k: np.percentile(v, (10, 90), axis=0) for k, v in fields.items()}
     
     # Use pandas to plot means (for better date handling)
@@ -578,10 +574,10 @@ def plot_samples(samples,
 
     ax = ax if ax is not None else plt.gca()
     
-    if plot_median:
-        df = pd.DataFrame(index=t, data=medians)
-        df.plot(ax=ax, legend=legend)    
-
+    df = pd.DataFrame(index=t, data=medians)
+    df.plot(ax=ax, legend=legend)    
+    median_max = df.max().values
+    
     colors = [l.get_color() for l in ax.get_lines()]
     
     # Add individual field lines
@@ -592,20 +588,16 @@ def plot_samples(samples,
             df = pd.DataFrame(index=t, data=data[::step,:].T)
             df.plot(ax=ax, lw=0.25, color=colors[i], alpha=0.25, legend=False)
             i += 1
-
-    if plot_mean:
-        df = pd.DataFrame(index=t, data=means)
-        df.plot(ax=ax, style='--', color=colors, legend=legend)
     
     # Add prediction intervals
-    ymax = 10
+    pi_max = 10
     i = 0
     for k, pred_interval in pred_intervals.items():
         ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], color=colors[i], alpha=0.1, label='CI')
-        ymax = np.maximum(ymax, pred_interval[1,:].max())
+        pi_max = np.maximum(pi_max, pred_interval[1,:].max())
         i+= 1
     
-    return ymax
+    return median_max, pi_max
     
     
 def plot_forecast(post_pred_samples, T, confirmed, 
@@ -618,53 +610,31 @@ def plot_forecast(post_pred_samples, T, confirmed,
 
     t = t if t is not None else np.arange(T)
 
-    if use_hosp:
-        fig, ax = plt.subplots(nrows = 4, figsize=(8,12), sharex=True)
-        ymax = [None] * 5
-    else:
-        fig, ax = plt.subplots(nrows = 3, figsize=(8,9), sharex=True)
-        ymax = [None] * 3
-        
-    i = 0
-    
-    # Confirmed
-    ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['y'], **kwargs)
-    confirmed.plot(ax=ax[i], style='o')
-    i += 1
-    
-    # Cumulative hospitalizations
-    if use_hosp:
-        ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['z'], **kwargs)
-        death.plot(ax=ax[i], style='o')
-        i += 1
-    
-    # Cumulative infected
-    ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['C'], n_samples=n_samples, **kwargs)
-    i += 1
-    
-    # Infected
-    ymax[i] = plot_samples(post_pred_samples, T=T, t=t, ax=ax[i], plot_fields=['I'], n_samples=n_samples, **kwargs)
-    i += 1
+    fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)
 
-    [a.axvline(confirmed.index.max(), linestyle='--', alpha=0.5) for a in ax]
+    
+    variables = ['y', 'z']
+    observations = [confirmed, death]
+    
+    for variable, observation, ax in zip(variables, observations, axes):
+    
+        median_max, pi_max = plot_samples(post_pred_samples, T=T, t=t, ax=ax, plot_fields=[variable], **kwargs)
+        observation.plot(ax=ax, style='o')
+    
+        ax.axvline(observation.index.max(), linestyle='--', alpha=0.5)
+        ax.grid(axis='y')
 
-    if scale == 'log':
-        for a in ax:
-            a.set_yscale('log')
+        if scale == 'log':
+            ax.set_yscale('log')
 
             # Don't display below 1
-            bottom, top = a.get_ylim()
+            bottom, top = ax.get_ylim()
             bottom = 1 if bottom < 1 else bottom
-            a.set_ylim(bottom=bottom)   
+            ax.set_ylim([bottom, pi_max])
+        else:
+            top = np.minimum(2*median_max, pi_max)
+            ax.set_ylim([0, top])
 
-    for y, a in zip(ymax, ax):
-        a.set_ylim(top=y)
-
-    for a in ax:
-        a.grid(axis='y')
-        
-    #plt.tight_layout()
-        
     return fig, ax
 
 def plot_R0(mcmc_samples, start):
@@ -682,6 +652,8 @@ def plot_R0(mcmc_samples, start):
     df.plot(style='-o')
     plt.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
 
+    plt.axhline(1, linestyle='--')
+    
     #plt.tight_layout()
 
     return fig

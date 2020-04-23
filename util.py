@@ -265,7 +265,7 @@ def gen_forecasts(data,
     prior_samples, mcmc_samples, post_pred_samples = load_samples(place, path=load_path)
     
     for scale in ['log', 'lin']:
-        for T in [50]:
+        for T in [65, 100, 150]:
 
             t = pd.date_range(start=start_, periods=T, freq='D')
 
