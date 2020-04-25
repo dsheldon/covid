@@ -206,8 +206,8 @@ class SEIRModel(CompartmentModel):
 
     
     @classmethod
-    def seed(cls, N=1e6, I=100., E=0.):
+    def seed(cls, N=1e6, I=100., E=0., H=0., D=0.):
         '''
         Seed infection. Return state vector for I exponsed out of N
         '''
-        return np.stack([N-E-I, E, I, 0.0, 0.0,0.0,I])
+        return np.stack([N-E-I, E, I, 0.0, H,D,I])
