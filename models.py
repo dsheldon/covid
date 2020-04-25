@@ -136,7 +136,7 @@ SEIR model
 ************************************************************
 """
 
-def SEIR_dynamics(T, params, x0, obs=None, death=None, suffix=""):
+def SEIR_dynamics(T, T_future, params, x0, obs=None, death=None, suffix=""):
     '''Run SEIR dynamics for T time steps
     
     Uses SEIRModel.run to run dynamics with pre-determined parameters.
@@ -148,12 +148,25 @@ def SEIR_dynamics(T, params, x0, obs=None, death=None, suffix=""):
     #beta = numpyro.sample("beta" + suffix,
      #             ExponentialRandomWalk(loc=beta0, scale=rw_scale, drift=drift, num_steps=T-1))
     
-    data = pd.DataFrame({'t':np.arange(T-1)})
-    beta = beta0_glm.sample(data, name="b0" + suffix, shape=(-1))[0]
+    
+    def exp_t(t):
+        return .25**t
 
 
+    if suffix != "_future":
+        data = pd.DataFrame({'t':np.arange(T-1)})
+        beta = beta0_glm.sample(data, name="b0" + suffix, shape=(-1))[0]
+    else:
+        data = pd.DataFrame({'t':np.arange(T_future-1)})
+        beta = beta0_glm.sample(data, name="b0" + suffix, shape=(-1))[0]
+        beta = beta*exp_t(np.arange(T_future-1))
+   
     # Run ODE
-    x = SEIRModel.run(T, x0, (beta, sigma, gamma, hosp_rate, death_rate))
+    if suffix != "_future":
+        x = SEIRModel.run(T, x0, (beta, sigma, gamma, hosp_rate, death_rate))
+    else:
+        x = SEIRModel.run(T_future, x0, (beta, sigma, gamma, hosp_rate, death_rate))
+
     x = x[1:] # first entry duplicates x0
     numpyro.deterministic("x" + suffix, x)
 
@@ -208,7 +221,7 @@ def SEIR_stochastic(T = 50,
 
     data = pd.DataFrame({'t':np.arange(T-1)})
 
-    beta0_glm = GLM("1 + cr(t, df=3)", 
+    beta0_glm = GLM("1 + cr(t, df=5) ", 
                  data, 
                  log_link,
                  partial(Gamma, var=0.1),
@@ -260,7 +273,7 @@ def SEIR_stochastic(T = 50,
               det_rate, det_noise_scale, 
               hosp_rate,death_rate,det_rate_d,beta0_glm)
     
-    beta, x, y, z = SEIR_dynamics(T, params, x0, 
+    beta, x, y, z = SEIR_dynamics(T, 0, params, x0, 
                                   obs = obs, 
                                   death = death)
     
@@ -275,7 +288,7 @@ def SEIR_stochastic(T = 50,
                   det_rate, det_noise_scale, 
                   hosp_rate, death_rate, det_rate_d,beta0_glm)
         
-        beta_f, x_f, y_f, z_f = SEIR_dynamics(T_future+1, params, x[-1,:], 
+        beta_f, x_f, y_f, z_f = SEIR_dynamics(T,T_future+1, params, x[-1,:], 
                                               suffix="_future")
         
         x = np.vstack((x, x_f))
@@ -652,7 +665,7 @@ def plot_R0(mcmc_samples, start):
     
     # Compute average R0 over time
     gamma = mcmc_samples['gamma'][:,None]
-    beta = mcmc_samples['beta']
+    beta = mcmc_samples['b0']
     t = pd.date_range(start=start, periods=beta.shape[1], freq='D')
     R0 = beta/gamma
 
