@@ -169,22 +169,22 @@ class SIRModel(CompartmentModel):
 class SEIRModel(CompartmentModel):
     
     @classmethod
-    def dx_dt(cls, x, t, beta, sigma, gamma, hosp_rate, death_rate):
+    def dx_dt(cls, x, t, beta, sigma, gamma, death_prob, death_rate):
         """
         SEIR equations
         """
-        S, E, I, R,H,D, C = x
+        S, E, I, R, H, D, C = x
         N = S + E + I + R + H + D
 
         dS_dt = - beta * S * I / N
         dE_dt = beta * S * I / N - sigma * E
-        dI_dt = sigma * E - gamma * (1-hosp_rate)* I - gamma*hosp_rate*I
-        dH_dt = hosp_rate*gamma*I - death_rate*H
-        dD_dt = death_rate*H
-        dR_dt = gamma * (1-hosp_rate) * I
+        dI_dt = sigma * E - gamma * (1 - death_prob) * I - gamma * death_prob * I
+        dH_dt = death_prob * gamma * I - death_rate * H
+        dD_dt = death_rate * H
+        dR_dt = gamma * (1 - death_prob) * I
         dC_dt = sigma * E  # cumulative infections
 
-        return np.stack([dS_dt, dE_dt, dI_dt,dR_dt, dH_dt,dD_dt, dC_dt])
+        return np.stack([dS_dt, dE_dt, dI_dt, dR_dt, dH_dt, dD_dt, dC_dt])
 
     
     @classmethod
@@ -206,8 +206,8 @@ class SEIRModel(CompartmentModel):
 
     
     @classmethod
-    def seed(cls, N=1e6, I=100., E=0.):
+    def seed(cls, N=1e6, I=100., E=0., R=0.0, H=0.0, D=0.0):
         '''
         Seed infection. Return state vector for I exponsed out of N
         '''
-        return np.stack([N-E-I, E, I, 0.0, 0.0,0.0,I])
+        return np.stack([N-E-I-R-H-D, E, I, R, H, D, I])

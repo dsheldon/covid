@@ -143,23 +143,23 @@ def SEIR_dynamics(T, params, x0, obs=None, death=None, suffix=""):
     '''
     
     beta0, sigma, gamma, rw_scale, drift, \
-    det_rate, det_noise_scale, hosp_rate, death_rate, det_rate_d  = params
+    det_prob, det_noise_scale, death_prob, death_rate, det_prob_d  = params
 
     beta = numpyro.sample("beta" + suffix,
                   ExponentialRandomWalk(loc=beta0, scale=rw_scale, drift=drift, num_steps=T-1))
 
     # Run ODE
-    x = SEIRModel.run(T, x0, (beta, sigma, gamma, hosp_rate, death_rate))
+    x = SEIRModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
     x = x[1:] # first entry duplicates x0
     numpyro.deterministic("x" + suffix, x)
 
-    latent = x[:,6] # cumulative cases
 
     # Noisy observations
-    y = observe("y" + suffix, x[:,6], det_rate, det_noise_scale, obs = obs)
-   
-    z = observe("z" + suffix, x[:,5], det_rate_d, det_noise_scale, obs = death)
-  
+    with numpyro.handlers.scale(scale_factor=0.5):
+        y = observe("y" + suffix, x[:,6], det_prob, det_noise_scale, obs = obs)
+        
+    with numpyro.handlers.scale(scale_factor=2.0):
+        z = observe("z" + suffix, x[:,5], det_prob_d, det_noise_scale, obs = death)
         
     return beta, x, y, z
 
@@ -173,16 +173,16 @@ def SEIR_stochastic(T = 50,
                     beta_shape = 1,
                     sigma_shape = 5,
                     gamma_shape = 5,
-                    det_rate_est = 0.3,
-                    det_rate_conc = 50,
+                    det_prob_est = 0.3,
+                    det_prob_conc = 50,
                     det_noise_scale = 0.15,
                     rw_scale = 1e-1,
                     drift_scale = None,
                     obs = None,
                     death=None,
-                    hosp_rate_est = 0.15,
-                    hosp_rate_conc = 30,
-                    hosp_noise_scale = 0.15,
+                    death_prob_est = 0.15,
+                    death_prob_cont = 30,
+                    death_noise_scale = 0.15,
                     hosp = None):
 
     '''
@@ -192,6 +192,8 @@ def SEIR_stochastic(T = 50,
     # Sample initial number of infected individuals
     I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
     E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
+    H0 = numpyro.sample("H0", dist.Uniform(0, 0.02*N))
+    D0 = numpyro.sample("D0", dist.Uniform(0, 0.02*N))
     
     # Sample parameters
     sigma = numpyro.sample("sigma", 
@@ -201,25 +203,23 @@ def SEIR_stochastic(T = 50,
                            dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
 
     beta0 = numpyro.sample("beta0", 
-                          dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
+                           dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
         
-    det_rate = numpyro.sample("det_rate", 
-                              dist.Beta(det_rate_est * det_rate_conc,
-                                        (1-det_rate_est) * det_rate_conc))
-    det_rate_d = numpyro.sample("det_rate_d", 
-                               dist.Beta(.9 * 100,
-                                        (1-.9) * 100))
+    det_prob = numpyro.sample("det_prob", 
+                              dist.Beta(det_prob_est * det_prob_conc,
+                                        (1-det_prob_est) * det_prob_conc))
     
-    hosp_rate = numpyro.sample("hosp_rate", 
-                              dist.Beta(.1 * 100,
-                                        (1-.1) * 100))
+    det_prob_d = numpyro.sample("det_prob_d", 
+                                dist.Beta(.9 * 100,
+                                          (1-.9) * 100))
+    
+    death_prob = numpyro.sample("death_prob", 
+                                dist.Beta(.1 * 100,
+                                          (1-.1) * 100))
+    
     death_rate = numpyro.sample("death_rate", 
-                             dist.Beta(.1 * 100,
-                                        (1-.1) * 100))
-    
-
-  
-    
+                                dist.Beta(.1 * 100,
+                                          (1-.1) * 100))
     
     if drift_scale is not None:
         drift = numpyro.sample("drift", dist.Normal(loc=0, scale=drift_scale))
@@ -227,7 +227,7 @@ def SEIR_stochastic(T = 50,
         drift = 0
         
     
-    x0 = SEIRModel.seed(N, I0, E0)
+    x0 = SEIRModel.seed(N=N, I=I0, E=E0, H=H0, D=D0)
     numpyro.deterministic("x0", x0)
     
     # Split observations into first and rest
@@ -236,15 +236,15 @@ def SEIR_stochastic(T = 50,
 
     
     # First observation
-    y0 = observe("y0", x0[6], det_rate, det_noise_scale, obs=obs0)
-    z0 = observe("z0", x0[5], det_rate_d, det_noise_scale, obs=death0)
+    with numpyro.handlers.scale(scale_factor=0.5):
+        y0 = observe("y0", x0[6], det_prob, det_noise_scale, obs=obs0)
+    z0 = observe("z0", x0[5], det_prob_d, det_noise_scale, obs=death0)
 
-   
         
     params = (beta0, sigma, gamma, 
               rw_scale, drift, 
-              det_rate, det_noise_scale, 
-              hosp_rate,death_rate,det_rate_d)
+              det_prob, det_noise_scale, 
+              death_prob, death_rate, det_prob_d)
     
     beta, x, y, z = SEIR_dynamics(T, params, x0, 
                                   obs = obs, 
@@ -258,8 +258,8 @@ def SEIR_stochastic(T = 50,
         
         params = (beta[-1], sigma, gamma, 
                   rw_scale, drift, 
-                  det_rate, det_noise_scale, 
-                  hosp_rate, death_rate, det_rate_d)
+                  det_prob, det_noise_scale, 
+                  death_prob, death_rate, det_prob_d)
         
         beta_f, x_f, y_f, z_f = SEIR_dynamics(T_future+1, params, x[-1,:], 
                                               suffix="_future")
@@ -268,7 +268,7 @@ def SEIR_stochastic(T = 50,
         y = np.append(y, y_f)
         z = np.append(z, z_f)
         
-    return beta, x, y, z, det_rate, hosp_rate
+    return beta, x, y, z, det_prob, death_prob
 
 
 
