@@ -15,6 +15,67 @@ from jax.random import PRNGKey
 import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
+us_state_abbrev = {
+    'Alabama': 'AL',
+    'Alaska': 'AK',
+    'American Samoa': 'AS',
+    'Arizona': 'AZ',
+    'Arkansas': 'AR',
+    'California': 'CA',
+    'Colorado': 'CO',
+    'Connecticut': 'CT',
+    'Delaware': 'DE',
+    'District of Columbia': 'DC',
+    'Florida': 'FL',
+    'Georgia': 'GA',
+    'Guam': 'GU',
+    'Hawaii': 'HI',
+    'Idaho': 'ID',
+    'Illinois': 'IL',
+    'Indiana': 'IN',
+    'Iowa': 'IA',
+    'Kansas': 'KS',
+    'Kentucky': 'KY',
+    'Louisiana': 'LA',
+    'Maine': 'ME',
+    'Maryland': 'MD',
+    'Massachusetts': 'MA',
+    'Michigan': 'MI',
+    'Minnesota': 'MN',
+    'Mississippi': 'MS',
+    'Missouri': 'MO',
+    'Montana': 'MT',
+    'Nebraska': 'NE',
+    'Nevada': 'NV',
+    'New Hampshire': 'NH',
+    'New Jersey': 'NJ',
+    'New Mexico': 'NM',
+    'New York': 'NY',
+    'North Carolina': 'NC',
+    'North Dakota': 'ND',
+    'Northern Mariana Islands':'MP',
+    'Ohio': 'OH',
+    'Oklahoma': 'OK',
+    'Oregon': 'OR',
+    'Pennsylvania': 'PA',
+    'Puerto Rico': 'PR',
+    'Rhode Island': 'RI',
+    'South Carolina': 'SC',
+    'South Dakota': 'SD',
+    'Tennessee': 'TN',
+    'Texas': 'TX',
+    'Utah': 'UT',
+    'Vermont': 'VT',
+    'Virgin Islands': 'VI',
+    'Virginia': 'VA',
+    'Washington': 'WA',
+    'West Virginia': 'WV',
+    'Wisconsin': 'WI',
+    'Wyoming': 'WY',
+    'Diamond Princess':'Diamond Princess',
+    'Grand Princess':'Grand Princess'
+}
+
 
 def load_world_data():
     # world data
@@ -37,10 +98,14 @@ def load_world_data():
     return world_data
 
 
-def load_state_data():
+def load_state_data(source):
 
     # US state data
-    US = covidtracking.load_us()
+    if source=="covidtracker":
+        US = covidtracking.load_us()
+    if source=="jhu":
+        US = get_jhu_US_data_new_format()
+    
     traits = states.uga_traits()
 
     state_set = set(traits.index) & set(US.columns.unique(level=0))
@@ -104,6 +169,44 @@ def future_data(data, T, offset=1):
     return data
 
 
+def get_jhu_US_data_new_format():
+    baseURL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/"
+    def loadData(fileName, columnName):
+        data = pd.read_csv(baseURL + fileName)
+        return (data)
+    confirmed = loadData(
+    "time_series_covid19_confirmed_US.csv", "confirmed")
+    confirmed = confirmed.drop(columns=['UID','Lat', 'Long_',
+                                "iso2","iso3","code3","FIPS",
+                                "Admin2", "Country_Region","Combined_Key"])
+    confirmed = confirmed.groupby('Province_State').sum().T
+    confirmed = confirmed.rename(columns=us_state_abbrev)  
+    confirmed =confirmed.reset_index()
+    confirmed = confirmed.rename(columns={'index': 'date'})
+
+
+    confirmed['date'] = pd.to_datetime(confirmed['date'], infer_datetime_format=False) 
+    deaths = loadData(
+    "time_series_covid19_deaths_US.csv", "deaths")
+    deaths = deaths.drop(columns=['UID','Lat', 'Long_',
+                                "iso2","iso3","code3","FIPS",
+                                "Admin2", "Country_Region","Combined_Key","Population"])
+    deaths = deaths.groupby('Province_State').sum().T
+    deaths = deaths.rename(columns=us_state_abbrev)
+    
+    deaths= deaths.reset_index()
+    deaths = deaths.rename(columns={'index': 'date'})
+    df = pd.concat([deaths,confirmed],axis=1,keys=('death','confirmed'))
+
+    df = df.reorder_levels([1,0], axis=1).sort_index(axis=1)
+   
+    df = df.set_index(confirmed['date'])
+   
+    return df
+
+    
+    
+    
 
 def load_state_Xy(which=None):
     X_place = states.uga_traits().drop('DC') # incomplete data for DC
