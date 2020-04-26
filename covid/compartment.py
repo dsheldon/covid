@@ -2,40 +2,6 @@ import jax
 from jax.experimental.ode import odeint
 import jax.numpy as np
 
-def build_odeint_batch(dx_dt, **kwargs):
-    '''
-    TODO: DEPRECATE
-    Build a vectorized ODE solver
-    
-    Avoids current issue with applying vmap to odeint
-    '''
-    def dx_dt_batch(x, t, *args):
-        '''
-        Time derivative for a flattened batch of inputs to dx_dt
-        
-        x has shape (batch_sz * d,)
-        t is a scalar
-        other args have shape (batch_sz,) 
-        
-        Strategy: reshape x to (batch_sz, d) and call vmap(dx_dt)(...),
-        then reshape derivative back to (batch_sz * d)
-        '''
-        batch_sz = len(args[0])
-        x = x.reshape(batch_sz, -1)
-        d = jax.vmap(dx_dt, in_axes=(0, None) + (0,) * len(args))(x, t, *args)
-        return d.ravel()
-    
-    ode = build_odeint(dx_dt_batch, **kwargs)
-    
-    def odeint_batch(x0, t, *args):
-        batch_sz, d = x0.shape
-        x = ode(x0.ravel(), t, *args)
-        # result is (T, batch_sz, d). massage to (batch_sz, T, d)
-        return x.reshape(len(t), batch_sz, d).swapaxes(0,1)
-
-    return odeint_batch
-
-
 class CompartmentModel(object):
     '''
     Base class for compartment models. 
@@ -128,6 +94,13 @@ class CompartmentModel(object):
         
         return X
 
+    @classmethod
+    def R0(cls, theta):
+        raise NotImplementedError()
+        
+    @classmethod
+    def growth_rate(cls, theta):
+        raise NotImplementedError()
     
     
 class SIRModel(CompartmentModel):
@@ -159,14 +132,10 @@ class SIRModel(CompartmentModel):
 
     @classmethod
     def seed(cls, N=1e6, I=100.):
-        '''
-        Seed infection. Return state vector for I infected out of N
-        '''
         return np.stack([N-I, I, 0.0, I])
         
 
-
-class SEIRModel(CompartmentModel):
+class SEIRDModel(CompartmentModel):
     
     @classmethod
     def dx_dt(cls, x, t, beta, sigma, gamma, death_prob, death_rate):
@@ -192,7 +161,6 @@ class SEIRModel(CompartmentModel):
         beta, sigma, gamma = theta
         return beta / gamma
     
-    
     @classmethod
     def growth_rate(cls, theta):
         '''
@@ -207,7 +175,4 @@ class SEIRModel(CompartmentModel):
     
     @classmethod
     def seed(cls, N=1e6, I=100., E=0., R=0.0, H=0.0, D=0.0):
-        '''
-        Seed infection. Return state vector for I exponsed out of N
-        '''
         return np.stack([N-E-I-R-H-D, E, I, R, H, D, I])

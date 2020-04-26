@@ -1,9 +1,10 @@
-import jhu
-import covidtracking
-import states
 import sys
 
-import models
+from . import jhu
+from . import covidtracking
+from . import states
+
+from covid.models.SEIRD import SEIRD_stochastic
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,67 +16,12 @@ from jax.random import PRNGKey
 import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
-us_state_abbrev = {
-    'Alabama': 'AL',
-    'Alaska': 'AK',
-    'American Samoa': 'AS',
-    'Arizona': 'AZ',
-    'Arkansas': 'AR',
-    'California': 'CA',
-    'Colorado': 'CO',
-    'Connecticut': 'CT',
-    'Delaware': 'DE',
-    'District of Columbia': 'DC',
-    'Florida': 'FL',
-    'Georgia': 'GA',
-    'Guam': 'GU',
-    'Hawaii': 'HI',
-    'Idaho': 'ID',
-    'Illinois': 'IL',
-    'Indiana': 'IN',
-    'Iowa': 'IA',
-    'Kansas': 'KS',
-    'Kentucky': 'KY',
-    'Louisiana': 'LA',
-    'Maine': 'ME',
-    'Maryland': 'MD',
-    'Massachusetts': 'MA',
-    'Michigan': 'MI',
-    'Minnesota': 'MN',
-    'Mississippi': 'MS',
-    'Missouri': 'MO',
-    'Montana': 'MT',
-    'Nebraska': 'NE',
-    'Nevada': 'NV',
-    'New Hampshire': 'NH',
-    'New Jersey': 'NJ',
-    'New Mexico': 'NM',
-    'New York': 'NY',
-    'North Carolina': 'NC',
-    'North Dakota': 'ND',
-    'Northern Mariana Islands':'MP',
-    'Ohio': 'OH',
-    'Oklahoma': 'OK',
-    'Oregon': 'OR',
-    'Pennsylvania': 'PA',
-    'Puerto Rico': 'PR',
-    'Rhode Island': 'RI',
-    'South Carolina': 'SC',
-    'South Dakota': 'SD',
-    'Tennessee': 'TN',
-    'Texas': 'TX',
-    'Utah': 'UT',
-    'Vermont': 'VT',
-    'Virgin Islands': 'VI',
-    'Virginia': 'VA',
-    'Washington': 'WA',
-    'West Virginia': 'WV',
-    'Wisconsin': 'WI',
-    'Wyoming': 'WY',
-    'Diamond Princess':'Diamond Princess',
-    'Grand Princess':'Grand Princess'
-}
 
+"""
+************************************************************
+Data
+************************************************************
+"""
 
 def load_world_data():
     # world data
@@ -98,13 +44,13 @@ def load_world_data():
     return world_data
 
 
-def load_state_data(source="covidtracker"):
+def load_state_data(source="jhu"):
 
     # US state data
     if source=="covidtracker":
         US = covidtracking.load_us()
     if source=="jhu":
-        US = get_jhu_US_data_new_format()
+        US = jhu.load_us()
     
     traits = states.uga_traits()
 
@@ -154,60 +100,6 @@ def load_data():
     return data, pop, place_names, state_pop
 
 
-def future_data(data, T, offset=1):
-    '''Projects data frame with (place, time) MultiIndex into future by
-       repeating final time value for each place'''
-    data = data.unstack(0)
-    orig_start = data.index.min()
-    start = data.index.max() + pd.Timedelta(offset, "D")
-    future = pd.date_range(start=start, periods=T, freq="D")
-    data = data.reindex(future, method='nearest')
-    data['t'] = (data.index-orig_start)/pd.Timedelta("1d")
-    data = data.stack()
-    data.index = data.index.swaplevel(0, 1)
-    data = data.sort_index()
-    return data
-
-
-def get_jhu_US_data_new_format():
-    baseURL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/"
-    def loadData(fileName, columnName):
-        data = pd.read_csv(baseURL + fileName)
-        return (data)
-    confirmed = loadData(
-    "time_series_covid19_confirmed_US.csv", "confirmed")
-    confirmed = confirmed.drop(columns=['UID','Lat', 'Long_',
-                                "iso2","iso3","code3","FIPS",
-                                "Admin2", "Country_Region","Combined_Key"])
-    confirmed = confirmed.groupby('Province_State').sum().T
-    confirmed = confirmed.rename(columns=us_state_abbrev)  
-    confirmed =confirmed.reset_index()
-    confirmed = confirmed.rename(columns={'index': 'date'})
-
-
-    confirmed['date'] = pd.to_datetime(confirmed['date'], infer_datetime_format=False) 
-    deaths = loadData(
-    "time_series_covid19_deaths_US.csv", "deaths")
-    deaths = deaths.drop(columns=['UID','Lat', 'Long_',
-                                "iso2","iso3","code3","FIPS",
-                                "Admin2", "Country_Region","Combined_Key","Population"])
-    deaths = deaths.groupby('Province_State').sum().T
-    deaths = deaths.rename(columns=us_state_abbrev)
-    
-    deaths= deaths.reset_index()
-    deaths = deaths.rename(columns={'index': 'date'})
-    df = pd.concat([deaths,confirmed],axis=1,keys=('death','confirmed'))
-
-    df = df.reorder_levels([1,0], axis=1).sort_index(axis=1)
-   
-    df = df.set_index(confirmed['date'])
-   
-    return df
-
-    
-    
-    
-
 def load_state_Xy(which=None):
     X_place = states.uga_traits().drop('DC') # incomplete data for DC
     X = states.uga_interventions()
@@ -234,6 +126,175 @@ def load_state_Xy(which=None):
 
 
 
+"""
+************************************************************
+Plotting
+************************************************************
+"""
+
+def combine_samples(samples, fields=['x', 'y', 'z', 'mean_y', 'mean_z']):
+    '''Combine x0, x, x_future and similar fields into a single array'''
+
+    samples = samples.copy()
+    
+    for f in fields:
+        if f in samples:
+            f0, f_future = f + '0', f + '_future'
+            data = np.concatenate((samples[f0][:,None], samples[f]), axis=1)
+            del samples[f0]
+            
+            if f_future in samples:
+                data = np.concatenate((data, samples[f_future]), axis=1)
+                del samples[f_future]
+            
+            samples[f] = data
+    
+    return samples
+
+
+def plot_samples(samples, 
+                 plot_fields=['I', 'y'], 
+                 T=None, 
+                 t=None, 
+                 ax=None, 
+                 n_samples=0,
+                 legend=True,
+                 model='SEIR'):
+    '''
+    Plotting method for SIR-type models. 
+    (Needs some refactoring to handle both SIR and SEIR)
+    '''
+
+    samples = combine_samples(samples)
+    n_samples = np.minimum(n_samples, samples['x'].shape[0])
+    
+    T_data = samples['x'].shape[1]
+    if T is None or T > T_data:
+        T = T_data
+    
+    if model == 'SIR':
+        S, I, R, C = 0, 1, 2, 3
+    elif model == 'SEIR':
+        S, E, I, R, H, D, C = 0, 1, 2, 3, 4, 5, 6
+    else:
+        raise ValueError("Bad model")
+    
+    fields = {'susceptible'     : samples['x'][:,:T, S],
+              'infectious'      : samples['x'][:,:T, I],
+              'removed'         : samples['x'][:,:T, R],
+              'total infectious': samples['x'][:,:T, C],
+              'total confirmed' : samples['y'][:,:T],
+              'total deaths'    : samples['z'][:,:T],
+              'daily confirmed' : onp.diff(samples['mean_y'][:,:T], axis=1, prepend=np.nan),
+              'daily deaths'    : onp.diff(samples['mean_z'][:,:T], axis=1, prepend=np.nan)}
+                  
+    fields = {k: fields[k] for k in plot_fields}
+
+    medians = {k: np.median(v, axis=0) for k, v in fields.items()}    
+    pred_intervals = {k: np.percentile(v, (10, 90), axis=0) for k, v in fields.items()}
+    
+    t = np.arange(T) if t is None else t[:T]
+    
+    ax = ax if ax is not None else plt.gca()
+    
+    df = pd.DataFrame(index=t, data=medians)
+    df.plot(ax=ax, legend=legend)
+    median_max = df.max().values
+    
+    colors = [l.get_color() for l in ax.get_lines()]
+    
+    # Add individual field lines
+    if n_samples > 0:
+        i = 0
+        for k, data in fields.items():
+            step = np.array(data.shape[0]/n_samples).astype('int32')
+            df = pd.DataFrame(index=t, data=data[::step,:].T)
+            df.plot(ax=ax, lw=0.25, color=colors[i], alpha=0.25, legend=False)
+            i += 1
+    
+    # Add prediction intervals
+    pi_max = 10
+    i = 0
+    for k, pred_interval in pred_intervals.items():
+        ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], color=colors[i], alpha=0.1, label='CI')
+        pi_max = np.maximum(pi_max, np.nanmax(pred_interval[1,:]))
+        i+= 1
+    
+    return median_max, pi_max
+    
+    
+def plot_forecast(post_pred_samples, T, confirmed, 
+                  t = None, 
+                  scale='log',
+                  n_samples= 100,
+                  death = None,
+                  daily = False,
+                  **kwargs):
+
+    t = t if t is not None else np.arange(T)
+
+    fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)
+    
+    
+    if daily:
+        variables = ['daily confirmed', 'daily deaths']
+        w = 7
+        min_periods = 1
+        observations = [confirmed.diff().rolling(w, min_periods=min_periods, center=True).mean(), 
+                        death.diff().rolling(w, min_periods=min_periods, center=True).mean()]
+    else:
+        variables = ['total confirmed', 'total deaths']
+        observations = [confirmed, death]
+        
+    for variable, observation, ax in zip(variables, observations, axes):
+    
+        median_max, pi_max = plot_samples(post_pred_samples, T=T, t=t, ax=ax, plot_fields=[variable], **kwargs)
+        observation.plot(ax=ax, style='o')
+    
+        ax.axvline(observation.index.max(), linestyle='--', alpha=0.5)
+        ax.grid(axis='y')
+
+        if scale == 'log':
+            ax.set_yscale('log')
+
+            # Don't display below 1
+            bottom, top = ax.get_ylim()
+            bottom = 1 if bottom < 1 else bottom
+            ax.set_ylim([bottom, pi_max])
+        else:
+            top = np.minimum(2*median_max, pi_max)
+            ax.set_ylim([0, top])
+
+    return fig, ax
+
+def plot_R0(mcmc_samples, start):
+
+    fig = plt.figure(figsize=(5,3))
+    
+    # Compute average R0 over time
+    gamma = mcmc_samples['gamma'][:,None]
+    beta = mcmc_samples['beta']
+    t = pd.date_range(start=start, periods=beta.shape[1], freq='D')
+    R0 = beta/gamma
+
+    pi = np.percentile(R0, (10, 90), axis=0)
+    df = pd.DataFrame(index=t, data={'R0': np.median(R0, axis=0)})
+    df.plot(style='-o')
+    plt.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
+
+    plt.axhline(1, linestyle='--')
+    
+    #plt.tight_layout()
+
+    return fig
+
+
+
+"""
+************************************************************
+Running
+************************************************************
+"""
 
 def run_place(data, 
               place, 
@@ -249,7 +310,7 @@ def run_place(data,
               save_path = 'out',
               **kwargs):
 
-    prob_model = models.SEIR_stochastic
+    prob_model = SEIRD_stochastic
     
     print(f"******* {place} *********")
     
@@ -366,7 +427,7 @@ def gen_forecasts(data,
 
             t = pd.date_range(start=start_, periods=T, freq='D')
 
-            fig, ax = models.plot_forecast(post_pred_samples, T, confirmed, 
+            fig, ax = plot_forecast(post_pred_samples, T, confirmed, 
                                     t = t, 
                                     scale = scale, 
                                     death = death,
@@ -383,7 +444,7 @@ def gen_forecasts(data,
             if show:
                 plt.show()
             
-    fig = models.plot_R0(mcmc_samples, start_)    
+    fig = plot_R0(mcmc_samples, start_)    
     plt.title(place)
     plt.tight_layout()
     
@@ -392,4 +453,5 @@ def gen_forecasts(data,
         plt.savefig(filename)
 
     if show:
-        plt.show()
+        plt.show()        
+        

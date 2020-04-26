@@ -1,8 +1,8 @@
 import pandas as pd
-import states
-#import functools
 import cachetools.func
 import warnings
+
+from . import states
 
 #@functools.lru_cache(128)
 @cachetools.func.ttl_cache(ttl=3600)
@@ -42,52 +42,36 @@ def load_world():
 #@functools.lru_cache(128)
 @cachetools.func.ttl_cache(ttl=3600)
 def load_us():
+    baseURL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/"
+    def loadData(fileName, columnName):
+        data = pd.read_csv(baseURL + fileName)
+        return (data)
+    confirmed = loadData(
+    "time_series_covid19_confirmed_US.csv", "confirmed")
+    confirmed = confirmed.drop(columns=['UID','Lat', 'Long_',
+                                "iso2","iso3","code3","FIPS",
+                                "Admin2", "Country_Region","Combined_Key"])
+    confirmed = confirmed.groupby('Province_State').sum().T
+    confirmed = confirmed.rename(columns=states.abbrev)  
+    confirmed =confirmed.reset_index()
+    confirmed = confirmed.rename(columns={'index': 'date'})
 
-    warnings.warn('This data is now deprecated. Use jhu.load_world() for country-level data'
-            'or covidtracking.load_us() for state-level data in the US')
-    
-    sources = {
-        'confirmed' : 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Confirmed.csv',
-        'deaths' : 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Deaths.csv',
-        'recovered' : 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_19-covid-Recovered.csv'
-    }
 
-    # Load each data file into a dataframe with row index = date, and column index = (country, province)
-    d = {key: load_and_massage(url) for key, url in sources.items()}
+    confirmed['date'] = pd.to_datetime(confirmed['date'], infer_datetime_format=False) 
+    deaths = loadData(
+    "time_series_covid19_deaths_US.csv", "deaths")
+    deaths = deaths.drop(columns=['UID','Lat', 'Long_',
+                                "iso2","iso3","code3","FIPS",
+                                "Admin2", "Country_Region","Combined_Key","Population"])
+    deaths = deaths.groupby('Province_State').sum().T
+    deaths = deaths.rename(columns=states.abbrev)
+    
+    deaths= deaths.reset_index()
+    deaths = deaths.rename(columns={'index': 'date'})
+    df = pd.concat([deaths,confirmed],axis=1,keys=('death','confirmed'))
 
-    # Concatenate data frames: column index is now (variable, country, province)
-    df = pd.concat(d.values(), axis=1, keys=d.keys())
-
-    # Permute order of index to (country, province, variable) and sort the columns by the index value
-    df = df.reorder_levels([1,2,0], axis=1).sort_index(axis=1)
-    
-    # Get US data: index is now (province, variable)
-    US = df.US
-
-    
-    # Get US data: index is now (province, variable)
-    US = df.US
-
-    # Maps place name in the US to states. Place names could be state
-    # abbreviations ('MA') or city/state combinations ('Boston, MA')
-    #
-    
-    # Input is a key like ('Boston, MA', 'confirmed') or ('MA', 'confirmed')
-    #  Output in both cases should be ('MA', 'confirmed')
-    def by_state(k):
-        s,v=k
-        return s.split(',')[-1].strip(), v
-
-    US = US.groupby(by_state, axis=1, as_index=True).sum()
-    US.columns = pd.MultiIndex.from_tuples(US.columns)
-    
-    # Filter for province in states.keys()
-    is_state = [province in states.keys() for province in US.columns.get_level_values(0) ]
-    US = US.iloc[:, is_state]
-    
-    # Add total column
-    US_tot = US.groupby(level=1, axis=1).sum()
-    for col in US_tot.columns:
-        US['tot', col] = US_tot[col]
-    
-    return US
+    df = df.reorder_levels([1,0], axis=1).sort_index(axis=1)
+   
+    df = df.set_index(confirmed['date'])
+   
+    return df
