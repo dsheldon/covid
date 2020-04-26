@@ -98,7 +98,7 @@ def load_world_data():
     return world_data
 
 
-def load_state_data(source):
+def load_state_data(source="covidtracker"):
 
     # US state data
     if source=="covidtracker":
