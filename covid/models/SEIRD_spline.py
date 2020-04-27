@@ -45,9 +45,9 @@ def SEIR_dynamics(T, T_future, params, x0, obs=None, death=None, suffix=""):
    
     # Run ODE
     if suffix != "_future":
-        x = SEIRModel.run(T, x0, (beta, sigma, gamma, hosp_rate, death_rate))
+        x = SEIRDModel.run(T, x0, (beta, sigma, gamma, hosp_rate, death_rate))
     else:
-        x = SEIRModel.run(T_future, x0, (beta, sigma, gamma, hosp_rate, death_rate))
+        x = SEIRDModel.run(T_future, x0, (beta, sigma, gamma, hosp_rate, death_rate))
 
     x = x[1:] # first entry duplicates x0
     numpyro.deterministic("x" + suffix, x)
@@ -103,7 +103,7 @@ def SEIRD_stochastic(T = 50,
 
     data = pd.DataFrame({'t':np.arange(T-1)})
 
-    beta0_glm = GLM("1 + cr(t, df=2) ", 
+    beta0_glm = GLM("1 + cr(t, df=3)", 
                  data, 
                  log_link,
                  partial(Gamma, var=0.1),
@@ -122,8 +122,7 @@ def SEIRD_stochastic(T = 50,
                               dist.Beta(.1 * 10,
                                         (1-.1) * 10))
     death_rate = numpyro.sample("death_rate", 
-                             dist.Beta(.1 * 10
-,
+                             dist.Beta(.1 * 10,
                                         (1-.1) * 10))
     
 
@@ -136,7 +135,7 @@ def SEIRD_stochastic(T = 50,
         drift = 0
         
     
-    x0 = SEIRModel.seed(N, I0, E0,H0,D0)
+    x0 = SEIRDModel.seed(N, I0, E0,H0,D0)
     numpyro.deterministic("x0", x0)
     
     # Split observations into first and rest
