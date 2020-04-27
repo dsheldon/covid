@@ -133,9 +133,53 @@ class SIRModel(CompartmentModel):
     @classmethod
     def seed(cls, N=1e6, I=100.):
         return np.stack([N-I, I, 0.0, I])
-        
 
-class SEIRDModel(CompartmentModel):
+
+class SEIRModel(CompartmentModel):
+    
+    @classmethod
+    def dx_dt(cls, x, t, beta, sigma, gamma):
+        """
+        SEIR equations
+        """        
+        S, E, I, R, C = x
+        N = S + E + I + R
+        
+        dS_dt = - beta * S * I / N
+        dE_dt = beta * S * I / N - sigma * E
+        dI_dt = sigma * E - gamma * I
+        dR_dt = gamma * I
+        dC_dt = sigma * E  # cumulative infections
+        
+        return np.stack([dS_dt, dE_dt, dI_dt, dR_dt, dC_dt])
+
+    
+    @classmethod
+    def R0(cls, theta):
+        beta, sigma, gamma = theta
+        return beta / gamma    
+    
+    @classmethod
+    def growth_rate(cls, theta):
+        '''
+        Initial rate of exponential growth
+        
+        Reference: Junling Ma, Estimating epidemic exponential growth rate 
+        and basic reproduction number, Infectious Disease Modeling, 2020
+        '''
+        beta, sigma, gamma = theta
+        return (-(sigma + gamma) + np.sqrt((sigma - gamma)**2 + 4 * sigma * beta))/2.
+
+    
+    @classmethod
+    def seed(cls, N=1e6, I=100., E=0.):
+        '''
+        Seed infection. Return state vector for I exponsed out of N
+        '''
+        return np.stack([N-E-I, E, I, 0.0, I])
+
+
+class SEIRDModel(SEIRModel):
     
     @classmethod
     def dx_dt(cls, x, t, beta, sigma, gamma, death_prob, death_rate):
@@ -155,24 +199,6 @@ class SEIRDModel(CompartmentModel):
 
         return np.stack([dS_dt, dE_dt, dI_dt, dR_dt, dH_dt, dD_dt, dC_dt])
 
-    
-    @classmethod
-    def R0(cls, theta):
-        beta, sigma, gamma = theta
-        return beta / gamma
-    
-    @classmethod
-    def growth_rate(cls, theta):
-        '''
-        Initial rate of exponential growth
-        
-        Reference: Junling Ma, Estimating epidemic exponential growth rate 
-        and basic reproduction number, Infectious Disease Modeling, 2020
-        '''
-        beta, sigma, gamma = theta
-        return (-(sigma + gamma) + np.sqrt((sigma - gamma)**2 + 4 * sigma * beta))/2.
-
-    
     @classmethod
     def seed(cls, N=1e6, I=100., E=0., R=0.0, H=0.0, D=0.0):
         return np.stack([N-E-I-R-H-D, E, I, R, H, D, I])

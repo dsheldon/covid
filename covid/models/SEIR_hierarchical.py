@@ -5,26 +5,25 @@ import numpyro
 import numpyro.distributions as dist
 
 from functools import partial
-from ..compartment import SEIRDModel
+from ..compartment import SEIRModel
 from ..glm import glm, GLM, log_link, logit_link, Gamma, Beta
 
 from .util import observe, ExponentialRandomWalk, get_future_data
 
-
 """
 ************************************************************
-SEIRD hierarchical
+SEIR hierarchical
 ************************************************************
 """
 
 
-def SEIRD_dynamics_hierarchical(T, params, x0, obs = None, death=None, use_rw = True, suffix=""):
+def SEIR_dynamics_hierarchical(T, params, x0, obs = None, use_rw = True, suffix=""):
     '''Run SEIR dynamics for T time steps
     
-    Uses SEIRDModel.run to run dynamics with pre-determined parameters.
+    Uses SEIRModel.run to run dynamics with pre-determined parameters.
     '''
         
-    beta, sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift, hosp_rate, death_rate, det_rate_d = params
+    beta, sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift = params
 
     num_places, T_minus_1 = beta.shape
     assert(T_minus_1 == T-1)
@@ -33,8 +32,7 @@ def SEIRD_dynamics_hierarchical(T, params, x0, obs = None, death=None, use_rw = 
     sigma = sigma[:,None]
     gamma = gamma[:,None]
     det_rate = det_rate[:,None]
-    det_rate_d = det_rate_d[:,None]
-
+    
     if use_rw:
         with numpyro.plate("places", num_places):
             rw = numpyro.sample("rw" + suffix,
@@ -48,17 +46,16 @@ def SEIRD_dynamics_hierarchical(T, params, x0, obs = None, death=None, use_rw = 
     beta *= rw
 
     # Run ODE
-    apply_model = lambda x0, beta, sigma, gamma, hosp_rate, death_rate: SEIRDModel.run(T, x0, (beta, sigma, gamma, hosp_rate, death_rate))
-    x = jax.vmap(apply_model)(x0, beta, sigma, gamma, hosp_rate, death_rate)
+    apply_model = lambda x0, beta, sigma, gamma: SEIRModel.run(T, x0, (beta, sigma, gamma))
+    x = jax.vmap(apply_model)(x0, beta, sigma, gamma)
 
     x = x[:,1:,:] # drop first time step from result (duplicates initial value)
     numpyro.deterministic("x" + suffix, x)
    
     # Noisy observations
-    y = observe("y" + suffix, x[:,:,6], det_rate, det_noise_scale, obs = obs)
-    z = observe("z" + suffix, x[:,:,5], det_rate_d, det_noise_scale, obs = death)
+    y = observe("y" + suffix, x[:,:,4], det_rate, det_noise_scale, obs = obs)
 
-    return rw, x, y, z
+    return rw, x, y
 
 
 def SEIR_hierarchical(data = None,
@@ -122,32 +119,6 @@ def SEIR_hierarchical(data = None,
                    guess=det_rate_est,
                    name="det_rate")[0]
     
-    det_rate_d = glm('1 + C(state, OneHot)',
-                   place_data,
-                   logit_link,
-                   partial(Beta, conc=det_rate_conc),
-                   prior=dist.Normal(0, 0.1),
-                   guess=.95,
-                   name="det_rate_d")[0]
-    
-    
-    death_rate = glm('1 + C(state, OneHot)',
-                     place_data,
-                     log_link,
-                     partial(Gamma, var=0.05),
-                     prior=dist.Normal(0, 0.5),
-                     guess=I_duration_est,
-                     name="death_rate")[0]
-
-
-
-    hosp_rate = glm('1 + C(state, OneHot)',
-                     place_data,
-                     log_link,
-                     partial(Beta, conc=100),
-                     prior=dist.Normal(0, 0.5),
-                     guess=I_duration_est,
-                     name="hosp_rate")[0]
     # Broadcast to correct size
     N = np.array(place_data['totalpop'])
     
@@ -169,36 +140,31 @@ def SEIR_hierarchical(data = None,
     if use_obs:
         pos = np.array(data['positive']).reshape(num_places, T)
         obs0, obs = pos[:,0], pos[:,1:]
-        death_obs = np.array(data['death']).reshape(num_places, T)
-        death0, death = death_obs[:,0], death_obs[:,1:]
     else:
         obs0, obs = None, None
-        death0, death = None, None
+    
     '''
     Run model for each place
     '''
-    x0 = jax.vmap(SEIRDModel.seed)(N, I0, E0)
+    x0 = jax.vmap(SEIRModel.seed)(N, I0, E0)
     numpyro.deterministic("x0", x0)
     
     # Split observations into first and rest
     
     # First observation
-    y0 = observe("y0", x0[:,6], det_rate, det_noise_scale, obs=obs0)
-    z0 = observe("z0", x0[:,5], det_rate_d, det_noise_scale, obs=death0)
+    y0 = observe("y0", x0[:,4], det_rate, det_noise_scale, obs=obs0)
 
     # Run dynamics
     drift = 0.
     rw_loc = 1.
-    params = (beta[:,:-1], sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift, hosp_rate,death_rate, det_rate_d)
-    rw, x, y, z = SEIRD_dynamics_hierarchical(T, params, x0, 
-                                              use_rw = use_rw, 
-                                              obs = obs,
-                                              death=death)
+    params = (beta[:,:-1], sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift)
+    rw, x, y = SEIR_dynamics_hierarchical(T, params, x0, 
+                                          use_rw = use_rw, 
+                                          obs = obs)
     
     x = np.concatenate((x0[:,None,:], x), axis=1)
     y = np.concatenate((y0[:,None], y), axis=1)
-    z = np.concatenate((z0[:,None], z), axis=1)
-
+    
     if T_future > 0:
         
         future_data = get_future_data(data, T_future-1)
@@ -208,19 +174,17 @@ def SEIR_hierarchical(data = None,
         beta_future = R0_future * gamma[:, None]
         beta_future = np.concatenate((beta[:,-1,None], beta_future), axis=1)
         
-        #rw_loc = rw[:,-1,None] if use_rw else 1.
+        rw_loc = rw[:,-1,None] if use_rw else 1.
         
-        params = (beta_future, sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift, hosp_rate, death_rate, det_rate_d)
+        params = (beta_future, sigma, gamma, det_rate, det_noise_scale, rw_loc, rw_scale, drift)
         
-        _, x_f, y_f, z_f = SEIRD_dynamics_hierarchical(T_future+1, 
-                                                       params, 
-                                                       x[:,-1,:], 
-                                                       use_rw = use_rw,
-                                                       suffix="_future")
+        _, x_f, y_f = SEIR_dynamics_hierarchical(T_future+1, 
+                                                 params, 
+                                                 x[:,-1,:], 
+                                                 use_rw = use_rw,
+                                                 suffix="_future")
         
         x = np.concatenate((x, x_f), axis=1)
         y = np.concatenate((y, y_f), axis=1)
-        z = np.concatenate((z, z_f), axis=1)
-
         
-    return beta, x, y,z, det_rate
+    return beta, x, y, det_rate

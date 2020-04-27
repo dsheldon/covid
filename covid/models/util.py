@@ -123,7 +123,7 @@ Data handling within model
 ************************************************************
 """
 
-def future_data(data, T, offset=1):
+def get_future_data(data, T, offset=1):
     '''Projects data frame with (place, time) MultiIndex into future by
        repeating final time value for each place'''
     data = data.unstack(0)
