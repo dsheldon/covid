@@ -6,17 +6,31 @@ def uga_traits():
     url = 'https://raw.githubusercontent.com/CEIDatUGA/COVID-19-DATA/master/US/US_state_traits.csv'
     traits = pd.read_csv(url, thousands = ',')
     traits = traits.set_index('postalCode')
+    traits.index.name = 'state'
     traits.index = traits.index.fillna('tot')  # there is a total line which has values for a few columns
     not_empty = [not traits[c].isnull().all() for c in traits.columns]
     traits = traits.loc[:, not_empty]
     traits['popdensity'] = traits.totalpop / traits.Land_Area_mile2
+    
+    # repeat state as columns for convenience
+    traits.insert(0, 'state', traits.index)
+
     return traits
     
+    
 @cachetools.func.ttl_cache(ttl=3600)
-def uga_announcements():
-    announcements = pd.read_csv(get_url('state-covid-announcements'))
-    return announcements
-
+def uga_interventions():
+    url = 'https://github.com/CEIDatUGA/COVID-19-DATA/raw/master/US/us-state-intervention-data/US_state_intervention_time_series.csv'
+    df = pd.read_csv(url, index_col=0)
+    df.NAME = df.NAME.replace(abbrev)
+    df = df.rename(columns={'NAME' : 'state', 'DATE' : 'date'})
+    df.date = pd.to_datetime(df.date)
+    df = df.set_index(['state', 'date'])
+    
+    # repeat state and date as columns (vs. index) for convenience
+    df.insert(0, 'state', df.index.get_level_values(0))
+    df.insert(1, 'date', df.index.get_level_values(1))
+    return df
 
 def local_traits():
     '''Read state traits from a downloaded data file. Currently using uga_traits instead'''
