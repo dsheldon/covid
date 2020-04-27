@@ -43,11 +43,11 @@ def SEIRD_stochastic(T = 50,
                      N = 1e5,
                      T_future = 0,
                      E_duration_est = 4.0,
-                     I_duration_est = 2.0,
+                     I_duration_est = 3.0,
                      R0_est = 3.0,
                      beta_shape = 1,
-                     sigma_shape = 5,
-                     gamma_shape = 5,
+                     sigma_shape = 10,
+                     gamma_shape = 10,
                      det_prob_est = 0.3,
                      det_prob_conc = 50,
                      det_noise_scale = 0.15,
@@ -55,9 +55,6 @@ def SEIRD_stochastic(T = 50,
                      drift_scale = None,
                      obs = None,
                      death=None,
-                     death_prob_est = 0.15,
-                     death_prob_cont = 30,
-                     death_noise_scale = 0.15,
                      hosp = None):
 
     '''
@@ -75,8 +72,11 @@ def SEIRD_stochastic(T = 50,
                            dist.Gamma(sigma_shape, sigma_shape * E_duration_est))
     
     gamma = numpyro.sample("gamma", 
-                           dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
+                            dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
 
+#     gamma = numpyro.sample("gamma", 
+#                            dist.TruncatedNormal(loc = 1./I_duration_est, scale = 0.25)
+                           
     beta0 = numpyro.sample("beta0", 
                            dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
         
@@ -93,8 +93,7 @@ def SEIRD_stochastic(T = 50,
                                           (1-.1) * 100))
     
     death_rate = numpyro.sample("death_rate", 
-                                dist.Beta(.1 * 100,
-                                          (1-.1) * 100))
+                                dist.Gamma(10, 10 * 10))
     
     if drift_scale is not None:
         drift = numpyro.sample("drift", dist.Normal(loc=0, scale=drift_scale))
