@@ -1,5 +1,5 @@
 import sys
-import util
+import covid.util as util
 
 if __name__ == "__main__": 
     place = sys.argv[1]
