@@ -12,28 +12,28 @@ We are experimenting with different Bayesian compartmental models. The basic ing
 * models for partial/noisy observations of confirmed cases and deaths
 * Bayesian inference using [numpyro](https://github.com/pyro-ppl/numpyro)
 
-This [Bayesian SEIRD model](docs/Bayesian%20SEIRD%20Model.pdf) is current as of April 27, 2020.
+This [Bayesian SEIRD model](docs/Bayesian%20SEIRD%20Model.pdf) is current as of April 27, 2020. Model code [here](covid/models/SEIRD.py).
 
 ## Team
 
-The team is based at the [College of Information and Computer Sciences](https://www.cics.umass.edu/) and (School of Public Health & Health Sciences)[https://www.umass.edu/sphhs/] at [UMass](https://www.umass.edu).
+The team is based at the [College of Information and Computer Sciences](https://www.cics.umass.edu/) and [School of Public Health & Health Sciences](https://www.umass.edu/sphhs/) at [UMass](https://www.umass.edu). The model contributors are:
 
 * [Dan Sheldon](https://people.cs.umass.edu/~sheldon/)
-* [Casey gibson](https://gcgibson.github.io/)
+* [Casey Gibson](https://gcgibson.github.io/)
 * [Nick Reich](https://reichlab.io/people)
 
 Dr. Reich directs the [CDC Influenza Forecasting Center of Excellence](https://www.umass.edu/newsoffice/article/cdc-designates-umass-amherst-flu) at UMass.
 
 ## Installation
 
-Our code depends on recent *development* versions of numpyro and jax. If you don't have these libraries installed and don't care about tracking their versions, our installation routine will pull and install them as unversioned packages:
+Our code depends on recent *development* versions of numpyro and jax. If you don't have these packages and don't care about tracking their versions, our installation routine will pull and install them as unversioned packages:
 ~~~
 git clone https://github.com/dsheldon/covid
 cd covid
 pip install -e .
 ~~~
 
-## Installation Deatils
+## Installation Details
 
 If you need to manually install jax and numpyro, here are rough instructions. More details can be found at the project sites.
 
