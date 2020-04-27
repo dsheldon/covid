@@ -30,10 +30,10 @@ def SEIRD_dynamics(T, params, x0, obs=None, death=None, suffix=""):
 
 
     # Noisy observations
-    with numpyro.handlers.scale(scale_factor=0.5):
+    with numpyro.handlers.scale(scale_factor=1.):
         y = observe("y" + suffix, x[:,6], det_prob, det_noise_scale, obs = obs)
         
-    with numpyro.handlers.scale(scale_factor=2.0):
+    with numpyro.handlers.scale(scale_factor=1.):
         z = observe("z" + suffix, x[:,5], det_prob_d, det_noise_scale, obs = death)
         
     return beta, x, y, z
@@ -43,11 +43,11 @@ def SEIRD_stochastic(T = 50,
                      N = 1e5,
                      T_future = 0,
                      E_duration_est = 4.0,
-                     I_duration_est = 3.0,
+                     I_duration_est = 2.0,
                      R0_est = 3.0,
                      beta_shape = 1,
-                     sigma_shape = 10,
-                     gamma_shape = 10,
+                     sigma_shape = 5,
+                     gamma_shape = 5,
                      det_prob_est = 0.3,
                      det_prob_conc = 50,
                      det_noise_scale = 0.15,
@@ -55,6 +55,9 @@ def SEIRD_stochastic(T = 50,
                      drift_scale = None,
                      obs = None,
                      death=None,
+                     death_prob_est = 0.15,
+                     death_prob_cont = 30,
+                     death_noise_scale = 0.15,
                      hosp = None):
 
     '''
@@ -72,11 +75,8 @@ def SEIRD_stochastic(T = 50,
                            dist.Gamma(sigma_shape, sigma_shape * E_duration_est))
     
     gamma = numpyro.sample("gamma", 
-                            dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
+                           dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
 
-#     gamma = numpyro.sample("gamma", 
-#                            dist.TruncatedNormal(loc = 1./I_duration_est, scale = 0.25)
-                           
     beta0 = numpyro.sample("beta0", 
                            dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
         
@@ -93,13 +93,14 @@ def SEIRD_stochastic(T = 50,
                                           (1-.1) * 100))
     
     death_rate = numpyro.sample("death_rate", 
-                                dist.Gamma(10, 10 * 10))
+                                dist.Beta(.1 * 100,
+                                          (1-.1) * 100))
     
-    if True:#drift_scale is not None:
-        drift = numpyro.sample("drift", dist.Normal(loc=np.log(.5), scale=.01))
-        drift = -np.exp(drift)
+    if drift_scale is not None:
+        drift = numpyro.sample("drift", dist.Normal(loc=0, scale=drift_scale))
     else:
-        drift = 0 
+        drift = 0
+        
     
     x0 = SEIRDModel.seed(N=N, I=I0, E=E0, H=H0, D=D0)
     numpyro.deterministic("x0", x0)
