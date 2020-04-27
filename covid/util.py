@@ -9,6 +9,8 @@ from covid.models.SEIRD import SEIRD_stochastic
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import numpy as onp
+
 import jax
 import jax.numpy as np
 from jax.random import PRNGKey
