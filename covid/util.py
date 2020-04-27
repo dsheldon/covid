@@ -18,6 +18,7 @@ from jax.random import PRNGKey
 import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
+from pathlib import Path
 
 """
 ************************************************************
@@ -377,6 +378,7 @@ def save_samples(place,
                  path='out'):
     
     # Save samples
+    Path(path).mkdir(parents=True, exist_ok=True)
     filename = f'{path}/{place}_samples.npz'
     np.savez(filename, 
              prior_samples = prior_samples,
@@ -386,6 +388,7 @@ def save_samples(place,
 
 def write_summary(place, mcmc, path='out'):
     # Write diagnostics to file
+    Path(path).mkdir(parents=True, exist_ok=True)
     filename = f'out/{place}_summary.txt'
     orig_stdout = sys.stdout
     with open(filename, 'w') as f:
@@ -414,6 +417,8 @@ def gen_forecasts(data,
                   save = True,
                   show = True, 
                   **kwargs):
+    
+    Path(save_path).mkdir(parents=True, exist_ok=True)
     
     confirmed = data[place]['data'].confirmed[start:]
     death = data[place]['data'].death[start:]
