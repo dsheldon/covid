@@ -4,6 +4,8 @@ import jax.numpy as np
 import numpyro
 import numpyro.distributions as dist
 
+import pandas as pd
+
 """
 ************************************************************
 Shared model / distribution components
