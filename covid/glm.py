@@ -88,7 +88,7 @@ class GLM(object):
             info = self.X.design_info # information from original data
             X = patsy.dmatrix(info, data)   # design matrix for new data
         
-        linpred = np.array(X).reshape(X.shape[0],X.shape[1]) @ self.theta
+        linpred = np.array(X) @ self.theta
 
         if shape is not None:
             linpred = linpred.reshape(shape)  # reshape to tensor if requested
