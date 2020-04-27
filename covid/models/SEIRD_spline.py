@@ -1,8 +1,12 @@
 import jax
 import jax.numpy as np
 
+import pandas as pd
 import numpyro
 import numpyro.distributions as dist
+from ..glm import glm, GLM, log_link, Gamma
+from functools import partial
+
 
 from ..compartment import SEIRDModel
 from .util import observe, ExponentialRandomWalk
@@ -51,15 +55,15 @@ def SEIR_dynamics(T, T_future, params, x0, obs=None, death=None, suffix=""):
     latent = x[:,6] # cumulative cases
 
     # Noisy observations
-    y = observe("y" + suffix, x[:,6], det_rate, det_noise_scale, obs = obs)
+    y = observe("y" + suffix, x[:,6], det_rate, det_noise_scale*4., obs = obs)
    
-    z = observe("z" + suffix, x[:,5], det_rate_d, det_noise_scale/4., obs = death)
+    z = observe("z" + suffix, x[:,5], det_rate_d, det_noise_scale, obs = death)
   
         
     return beta, x, y, z
 
 
-def SEIR_stochastic(T = 50,
+def SEIRD_stochastic(T = 50,
                     N = 1e5,
                     T_future = 0,
                     E_duration_est = 4.0,
@@ -99,7 +103,7 @@ def SEIR_stochastic(T = 50,
 
     data = pd.DataFrame({'t':np.arange(T-1)})
 
-    beta0_glm = GLM("1 + cr(t, df=5) ", 
+    beta0_glm = GLM("1 + cr(t, df=2) ", 
                  data, 
                  log_link,
                  partial(Gamma, var=0.1),

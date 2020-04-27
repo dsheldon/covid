@@ -4,7 +4,9 @@ from . import jhu
 from . import covidtracking
 from . import states
 
-from covid.models.SEIRD import SEIRD_stochastic
+#from covid.models.SEIRD import SEIRD_stochastic
+
+from covid.models.SEIRD_spline import SEIRD_stochastic
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -302,6 +304,7 @@ Running
 def run_place(data, 
               place, 
               start = '2020-03-04',
+	      end = None,
               confirmed_min = 10,
               death_min = 5,
               save = True,
@@ -316,9 +319,9 @@ def run_place(data,
     prob_model = SEIRD_stochastic
     
     print(f"******* {place} *********")
-    
     confirmed = data[place]['data'].confirmed[start:]
     death = data[place]['data'].death[start:]
+
     start = confirmed.index.min()
 
     confirmed[confirmed < confirmed_min] = np.nan
