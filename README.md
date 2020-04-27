@@ -5,7 +5,7 @@ models for COVID-19.
 
 ## Models
 
-We are experimenting with different models. This [Bayesian SEIR model](Bayesian%20SEIR%20Model.pdf) is fairly current as of April 2, 2020.
+We are experimenting with different models. This [Bayesian SEIR model](docs/Bayesian%20SEIR%20Model.pdf) is fairly current as of April 2, 2020.
 
 ## Installation
 
