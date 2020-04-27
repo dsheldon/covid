@@ -14,7 +14,7 @@ projects from their github repos:
 
 Install jaxlib (more info [here](https://github.com/google/jax#installation))
 ~~~
-pip install --upgrade jax jaxlib  # CPU-only version
+pip install --upgrade jaxlib
 ~~~
 
 Install jax (more into [here](https://jax.readthedocs.io/en/latest/developer.html#building-from-source))
@@ -24,9 +24,16 @@ cd jax
 pip install -e .
 ~~~
 
-Install numpyro (more details [here](https://github.com/pyro-ppl/numpyro)
+Install numpyro (more details [here](https://github.com/pyro-ppl/numpyro))
 ~~~
 git clone https://github.com/pyro-ppl/numpyro.git
 cd numpyro
 pip install -e .[dev]
+~~~
+
+Clone this repo and install:
+~~~
+git clone https://github.com/dsheldon/covid
+cd covid
+pip install -e .
 ~~~
