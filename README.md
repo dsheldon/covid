@@ -16,13 +16,17 @@ This [Bayesian SEIRD model](docs/Bayesian%20SEIRD%20Model.pdf) is current as of 
 
 ## Team
 
+The team is based at the [College of Information and Computer Sciences](https://www.cics.umass.edu/) and (School of Public Health & Health Sciences)[https://www.umass.edu/sphhs/] at [UMass](https://www.umass.edu).
+
 * [Dan Sheldon](https://people.cs.umass.edu/~sheldon/)
 * [Casey gibson](https://gcgibson.github.io/)
 * [Nick Reich](https://reichlab.io/people)
 
+Dr. Reich directs the [CDC Influenza Forecasting Center of Excellence](https://www.umass.edu/newsoffice/article/cdc-designates-umass-amherst-flu) at UMass.
+
 ## Installation
 
-Our code depends on very recent *development* versions of numpyro and jax. If you don't have these libraries installed or care what versions you get, this should work to install and run our code:
+Our code depends on recent *development* versions of numpyro and jax. If you don't have these libraries installed and don't care about tracking their versions, our installation routine will pull and install them as unversioned packages:
 ~~~
 git clone https://github.com/dsheldon/covid
 cd covid
