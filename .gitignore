@@ -4,6 +4,7 @@ bak
 figs
 scratch
 out
+**.egg-info
 **__pycache__
 **.ipynb_checkpoints
 **.DS_Store
