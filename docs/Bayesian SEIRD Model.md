@@ -1,19 +1,19 @@
-Authors: Dan Sheldon and Casey Gibson
-Date: April 27, 2020
+% Bayesian SEIRD Model
+% Dan Sheldon and Casey Gibson
+% April 27, 2020
 
-$$
 \newcommand{\Unif}{\text{Unif}}
-\newcommand{\Gamma}{\text{Gamma}}
+\renewcommand{\Gamma}{\text{Gamma}}
 \newcommand{\Beta}{\text{Beta}}
 \newcommand{\Normal}{\text{Normal}}
 \newcommand{\N}{\mathcal{N}}
 \newcommand{\Binomial}{\text{Binomial}}
 \newcommand{\E}{\mathbb{E}}
-$$
 
 
 # Underlying Disease Model 
 We use an SEIR model augmented with two additional compartments: "D" for death, and "H" for "hospitalized-and-will-die". Note that H does not model all hospitalizations, only those that eventually lead to death.
+
 $$
 \begin{aligned}
 \frac{dS}{dt} &= - \beta(t) \frac{SI}{N}  \\
@@ -24,7 +24,9 @@ $$
 \frac{dD}{dt} &= \lambda H 
 \end{aligned}
 $$
+
 The parameters are:
+
 * $\beta(t)$: (time-varying) contact rate
 * $\sigma$: rate of transition from E to I
 * $\gamma$: rate of transition from I to (R/H)
@@ -58,10 +60,11 @@ p_d &\sim \Beta(90, 10)
 $$
 
 Justification and values for user-selected parameters: 
+
 * $I_0$, $E_0$, $H_0$, and $D_0$ are the initial numbers of infectious, exposed, hospitalized-and-will-die, and dead. The priors are self-explanatory.
 * $\sigma$ is the rate for leaving the exposed compartment; i.e., $1/\sigma$ is the expected duration in the exposed compartment. The prior satisfies $\E[\sigma] = 1/\hat{d}_E$, where $\hat{d}_E$ is an initial guess of the duration in the exposed compartment. Currently $\hat{d}_E = 4.0$ based on published estimates (shortened slightly to account for possible infectiousness prior to developing symptoms)
-* $\gamma$ is the rate for leaving the infectious compartment; i.e., $1/\gamma$ is the expected duration in the infectious compartment. The prior satisfies $\E[\gamma] = 1/\hat{d}_I$, where $\hat{d}_I$ is an initial guess for the duration in the infectious compartment. The current setting is $\hat{d}_I = 1.5$ to model the likely isolation of individuals after symptom onset. Preliminary experiments show that the model has almost no ability to estimate this parameter from available data --- it is too confounded with $\sigma$ and $\beta$. Initial experiments also showed that $\hat{d}_I$ needed to be pretty small to be able to fit observed data while keeping realistic estimates of incubation time and $R_0$. It's probably important to do sensitivity analyses of forecasts on the setting of this prior.
-* $\beta_0$ is the initial contact rate. In the SEIR model, it is known that $R_0 = \beta/\gamma$, so we set our prior to have mean $\E[\beta_0] = \hat{R}/\hat{d}_I$ where $\hat{R} = 3.5$ is an initial guess for $R_0$ and $\hat{d}_I = 1.5$, as described above.
+* $\gamma$ is the rate for leaving the infectious compartment; i.e., $1/\gamma$ is the expected duration in the infectious compartment. The prior satisfies $\E[\gamma] = 1/\hat{d}_I$, where $\hat{d}_I$ is an initial guess for the duration in the infectious compartment. The current setting is $\hat{d}_I = 2.0$ to model the likely isolation of individuals after symptom onset. 
+* $\beta_0$ is the initial contact rate. In the SEIR model, it is known that $R_0 = \beta/\gamma$, so we set our prior to have mean $\E[\beta_0] = \hat{R}/\hat{d}_I$ where $\hat{R} = 3.0$ is an initial guess for $R_0$ and $\hat{d}_I = 2.0$, as described above.
 * $\lambda$ is the inverse of the expected number of days in the H compartment; it satisfies $\E[\lambda] = 0.1$ with shape 10 (i.e. roughly 10 days in the H compartment)
 * $\rho$ is the fatality rate: it satisfies $\E[\rho] = 0.1$ with concentration of $100$
 * $p$ is the detection probability: it satisfies $\E[p] = 0.3$ with concentration 50
@@ -77,19 +80,22 @@ $$
 X(0) = \big(S(0), E(0), I(0), R(0), H(0), D(0), C(0)\big) = \big(N-E_0-I_0-H_0-D_0,E_0,I_0, 0, H_0, D_0, I_0\big)
 $$
 The updates are
+
 $$
 \begin{aligned}
 \beta_{k+1} &= \beta_{k} \times \exp(\epsilon_k), \qquad \epsilon_k \sim \N(0, 0.2) \\
-X(k+1) &= \texttt{ode_solve}\big(X(k),\, dX/dt,\, \beta_k\big)
+X(k+1) &= \mathtt{odesolve}\big(X(k),\, dX/dt,\, \beta_k\big)
 \end{aligned}
 $$
-The contact rate $\beta_k$ undergoes an exponentiated Gaussian random walk starting from $\beta_0$ (defined above) with scale $\tau$. The function $\texttt{ode_solve}$ finds the state vector at time $k+1$ by simulating the ODE for one time step with (constant) contact rate $\beta_k$.
+The contact rate $\beta_k$ undergoes an exponentiated Gaussian random walk starting from $\beta_0$ (defined above) with scale $\tau$. The function $\mathtt{odesolve}$ finds the state vector at time $k+1$ by simulating the ODE for one time step with (constant) contact rate $\beta_k$.
 
 ## Observation model
 
 Observations are made on confirmed cases and deaths. Let $y(t)$ be the cumulative number of confirmed cases at time $t$ and $z(t)$ be the cumulative number of reported deaths. The observation model is:
 $$
-y(t) \sim \N(\mu_y, 0.15 \mu_y), \quad \mu_y = p C(t) \\
-z(t) \sim \N(\mu_y, 0.15 \mu_y), \quad \mu_z = p_d D(t)
+\begin{aligned}
+y(t) &\sim \N(\mu_y, 0.15 \mu_y), \quad \mu_y = p C(t)  \\
+z(t) &\sim \N(\mu_y, 0.15 \mu_y), \quad \mu_z = p_d D(t)
+\end{aligned}
 $$
 Our models weight the log-probabilities of the two different types of observations differently to encourage them to focus slightly more on deaths than confirmed cases. Specifically $\log p(y(t) | \cdots)$ is scaled by 0.5 and $\log p(z(t) | \cdot)$ is scaled by 2.0.
