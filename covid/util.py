@@ -6,7 +6,7 @@ from . import states
 
 #from covid.models.SEIRD import SEIRD_stochastic
 
-from covid.models.SEIRD_spline import SEIRD_stochastic
+from covid.models.SEIRD import SEIRD_stochastic
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -304,8 +304,9 @@ Running
 def run_place(data, 
               place, 
               start = '2020-03-04',
-	      end = None,
+              end = None,
               confirmed_min = 10,
+              confirmed_ignore_last = 0,
               death_min = 5,
               save = True,
               num_warmup = 1000,
@@ -322,6 +323,10 @@ def run_place(data,
     confirmed = data[place]['data'].confirmed[start:]
     death = data[place]['data'].death[start:]
 
+    # ignore last few confirmed cases reports
+    window_start = confirmed.index.max() - pd.Timedelta(confirmed_ignore_last - 1, "d")
+    confirmed[window_start:] = np.nan
+    
     start = confirmed.index.min()
 
     confirmed[confirmed < confirmed_min] = np.nan
