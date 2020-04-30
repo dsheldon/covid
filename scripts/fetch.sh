@@ -1,3 +1,5 @@
 #!/bin/bash
 
-rsync -avz swarm2:covid/out/ out/
+DIR=${1:-out}
+
+rsync -avz swarm2:covid/scripts/$DIR/ $DIR/
