@@ -4,9 +4,8 @@ from . import jhu
 from . import covidtracking
 from . import states
 
-#from covid.models.SEIRD import SEIRD_stochastic
-
-from covid.models.SEIRD import SEIRD_stochastic
+import covid.models.SEIRD
+import covid.models.SEIRD_incident
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -184,14 +183,24 @@ def plot_samples(samples,
     else:
         raise ValueError("Bad model")
     
-    fields = {'susceptible'     : samples['x'][:,:T, S],
-              'infectious'      : samples['x'][:,:T, I],
-              'removed'         : samples['x'][:,:T, R],
-              'total infectious': samples['x'][:,:T, C],
-              'total confirmed' : samples['y'][:,:T],
-              'total deaths'    : samples['z'][:,:T],
-              'daily confirmed' : onp.diff(samples['mean_y'][:,:T], axis=1, prepend=np.nan),
-              'daily deaths'    : onp.diff(samples['mean_z'][:,:T], axis=1, prepend=np.nan)}
+    if True:
+        fields = {'susceptible'     : samples['x'][:,:T, S],
+                  'infectious'      : samples['x'][:,:T, I],
+                  'removed'         : samples['x'][:,:T, R],
+                  'total infectious': samples['x'][:,:T, C],
+                  'total confirmed' : np.cumsum(samples['y'][:,:T], axis=1),
+                  'total deaths'    : np.cumsum(samples['z'][:,:T], axis=1),
+                  'daily confirmed' : samples['y'][:,:T],
+                  'daily deaths'    : samples['z'][:,:T]}
+    else:
+        fields = {'susceptible'     : samples['x'][:,:T, S],
+                  'infectious'      : samples['x'][:,:T, I],
+                  'removed'         : samples['x'][:,:T, R],
+                  'total infectious': samples['x'][:,:T, C],
+                  'total confirmed' : samples['y'][:,:T],
+                  'total deaths'    : samples['z'][:,:T],
+                  'daily confirmed' : onp.diff(samples['mean_y'][:,:T], axis=1, prepend=np.nan),
+                  'daily deaths'    : onp.diff(samples['mean_z'][:,:T], axis=1, prepend=np.nan)}
                   
     fields = {k: fields[k] for k in plot_fields}
 
@@ -317,7 +326,8 @@ def run_place(data,
               save_path = 'out',
               **kwargs):
 
-    prob_model = SEIRD_stochastic
+#    prob_model = covid.models.SEIRD.SEIRD_stochastic
+    prob_model = covid.models.SEIRD_incident.SEIRD_stochastic
     
     print(f"******* {place} *********")
     confirmed = data[place]['data'].confirmed[start:]
@@ -329,8 +339,8 @@ def run_place(data,
     
     start = confirmed.index.min()
 
-    confirmed[confirmed < confirmed_min] = np.nan
-    death[death < death_min] = np.nan
+    #confirmed[confirmed < confirmed_min] = np.nan
+    #death[death < death_min] = np.nan
     
     T = len(confirmed)
     N = data[place]['pop']
