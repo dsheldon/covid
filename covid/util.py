@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 
 import numpy as onp
 
+import datapackage
+
 import jax
 import jax.numpy as np
 from jax.random import PRNGKey
@@ -21,6 +23,8 @@ import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
 from pathlib import Path
+
+
 
 """
 ************************************************************
@@ -34,17 +38,17 @@ def load_world_data():
     world = world.loc[:,(slice(None), 'tot', slice(None))] # only country totals
 
     country_names = world.columns.unique(level=0)
-
+    world_pop_data = pd.read_csv('https://s3.amazonaws.com/rawstore.datahub.io/630580e802a621887384f99527b68f59.csv')
+    world_pop_data = world_pop_data.set_index("Country")
+     
+    country_names_valid = set(country_names) & set(world_pop_data.index) 
     world_data = {
         k: {'data' : world[k].tot, 
-            'pop' : None,
+            'pop' : world_pop_data.loc[k]['Year_2016'],
             'name' : k}
-        for k in country_names
+        for k in country_names_valid
     }
 
-    # Need world population data!
-    world_data['US']['pop'] = 3.27e8
-    world_data['Italy']['pop'] = 60.48e6
     
     return world_data
 
@@ -469,4 +473,8 @@ def gen_forecasts(data,
 
     if show:
         plt.show()        
+
+
+def get_world_pop_data():
+     return (dict(zip(names, population)))
         
