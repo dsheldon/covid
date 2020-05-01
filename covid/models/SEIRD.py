@@ -65,7 +65,7 @@ def SEIRD_stochastic(T = 50,
     I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
     E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
     H0 = numpyro.sample("H0", dist.Uniform(0, 0.02*N))
-    D0 = numpyro.sample("D0", dist.Uniform(0, 0.02*N))
+    D0 = numpyro.sample("D0", dist.Uniform(0, 100))
     
     # Sample parameters
     sigma = numpyro.sample("sigma", 

@@ -13,8 +13,6 @@ import matplotlib.pyplot as plt
 
 import numpy as onp
 
-import datapackage
-
 import jax
 import jax.numpy as np
 from jax.random import PRNGKey
@@ -40,7 +38,7 @@ def load_world_data():
     country_names = world.columns.unique(level=0)
     world_pop_data = pd.read_csv('https://s3.amazonaws.com/rawstore.datahub.io/630580e802a621887384f99527b68f59.csv')
     world_pop_data = world_pop_data.set_index("Country")
-     
+        
     country_names_valid = set(country_names) & set(world_pop_data.index) 
     world_data = {
         k: {'data' : world[k].tot, 
@@ -74,39 +72,6 @@ def load_state_data(source="jhu"):
     }
     
     return state_data
-
-
-def load_data():
-
-    # world data
-    world = jhu.load_world()
-    world = world.loc[:,(slice(None), 'tot', slice(None))] # only country totals
-    country_names = world.columns.unique(level=0)
-    
-    # Need country populations!
-    pop = {
-        'Italy': 60.48e6,
-        'US': 3.27e8,
-    }
-
-    data = {country: world[country].tot for country in country_names}
-
-    place_names = {country: country for country in country_names}
-    place_names['US'] = 'United States'
-    place_names = dict(place_names, **states.states)
-    
-    # US state data
-    US = covidtracking.load_us()
-    traits = states.uga_traits()
-
-    state_pop = { k: traits.totalpop[k] for k in traits.index }
-    state_data = { k: US[k] for k in US.columns.unique(level=0) }
-
-    # combine them
-    data = dict(data, **state_data)
-    pop = dict(pop, **state_pop)
-    
-    return data, pop, place_names, state_pop
 
 
 def load_state_Xy(which=None):
@@ -166,7 +131,6 @@ def plot_samples(samples,
                  T=None, 
                  t=None, 
                  ax=None, 
-                 n_samples=0,
                  legend=True,
                  model='SEIR'):
     '''
@@ -211,28 +175,20 @@ def plot_samples(samples,
     median_max = df.max().values
     
     colors = [l.get_color() for l in ax.get_lines()]
-    
-    # Add individual field lines
-    if n_samples > 0:
-        i = 0
-        for k, data in fields.items():
-            step = np.array(data.shape[0]/n_samples).astype('int32')
-            df = pd.DataFrame(index=t, data=data[::step,:].T)
-            df.plot(ax=ax, lw=0.25, color=colors[i], alpha=0.25, legend=False)
-            i += 1
-    
+        
     # Add prediction intervals
     pi_max = 10
-    i = 0
-    for k, pred_interval in pred_intervals.items():
-        ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], color=colors[i], alpha=0.1, label='CI')
+    for i, pi in pred_intervals.values():
+        ax.fill_between(t, pi[0,:], pi[1,:], color=colors[i], alpha=0.1, label='CI')
         pi_max = np.maximum(pi_max, np.nanmax(pred_interval[1,:]))
-        i+= 1
     
     return median_max, pi_max
     
     
-def plot_forecast(post_pred_samples, T, confirmed, 
+def plot_forecast(post_pred_samples, 
+                  forecast_samples,
+                  T, 
+                  confirmed, 
                   t = None, 
                   scale='log',
                   n_samples= 100,
@@ -324,8 +280,8 @@ def run_place(data,
     prob_model = SEIRD_stochastic
     
     print(f"******* {place} *********")
-    confirmed = data[place]['data'].confirmed[start:]
-    death = data[place]['data'].death[start:]
+    confirmed = data[place]['data'].confirmed[start:end]
+    death = data[place]['data'].death[start:end]
 
     # ignore last few confirmed cases reports
     window_start = confirmed.index.max() - pd.Timedelta(confirmed_ignore_last - 1, "d")
@@ -333,8 +289,8 @@ def run_place(data,
     
     start = confirmed.index.min()
 
-    confirmed[confirmed < confirmed_min] = np.nan
-    death[death < death_min] = np.nan
+#     confirmed[confirmed < confirmed_min] = np.nan
+#     death[death < death_min] = np.nan
     
     T = len(confirmed)
     N = data[place]['pop']
@@ -424,6 +380,7 @@ def load_samples(place, path='out'):
 def gen_forecasts(data, 
                   place, 
                   start = '2020-03-04', 
+                  end=None,
                   load_path = 'out',
                   save_path = 'vis',
                   save = True,
@@ -432,8 +389,8 @@ def gen_forecasts(data,
     
     Path(save_path).mkdir(parents=True, exist_ok=True)
     
-    confirmed = data[place]['data'].confirmed[start:]
-    death = data[place]['data'].death[start:]
+    confirmed = data[place]['data'].confirmed[start:end]
+    death = data[place]['data'].death[start:end]
     start_ = confirmed.index.min()
 
     T = len(confirmed)
