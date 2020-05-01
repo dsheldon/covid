@@ -4,9 +4,7 @@ from . import jhu
 from . import covidtracking
 from . import states
 
-#from covid.models.SEIRD import SEIRD_stochastic
-
-from covid.models.SEIRD import SEIRD_stochastic
+import covid.models.SEIRD
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -105,85 +103,6 @@ def load_state_Xy(which=None):
 Plotting
 ************************************************************
 """
-
-def combine_samples(samples, fields=['x', 'y', 'z', 'mean_y', 'mean_z']):
-    '''Combine x0, x, x_future and similar fields into a single array'''
-
-    samples = samples.copy()
-    
-    for f in fields:
-        if f in samples:
-            f0, f_future = f + '0', f + '_future'
-            data = np.concatenate((samples[f0][:,None], samples[f]), axis=1)
-            del samples[f0]
-            
-            if f_future in samples:
-                data = np.concatenate((data, samples[f_future]), axis=1)
-                del samples[f_future]
-            
-            samples[f] = data
-    
-    return samples
-
-
-def plot_samples(samples, 
-                 plot_fields=['I', 'y'], 
-                 T=None, 
-                 t=None, 
-                 ax=None, 
-                 legend=True,
-                 model='SEIR'):
-    '''
-    Plotting method for SIR-type models. 
-    (Needs some refactoring to handle both SIR and SEIR)
-    '''
-
-    samples = combine_samples(samples)
-    n_samples = np.minimum(n_samples, samples['x'].shape[0])
-    
-    T_data = samples['x'].shape[1]
-    if T is None or T > T_data:
-        T = T_data
-    
-    if model == 'SIR':
-        S, I, R, C = 0, 1, 2, 3
-    elif model == 'SEIR':
-        S, E, I, R, H, D, C = 0, 1, 2, 3, 4, 5, 6
-    else:
-        raise ValueError("Bad model")
-    
-    fields = {'susceptible'     : samples['x'][:,:T, S],
-              'infectious'      : samples['x'][:,:T, I],
-              'removed'         : samples['x'][:,:T, R],
-              'total infectious': samples['x'][:,:T, C],
-              'total confirmed' : samples['y'][:,:T],
-              'total deaths'    : samples['z'][:,:T],
-              'daily confirmed' : onp.diff(samples['mean_y'][:,:T], axis=1, prepend=np.nan),
-              'daily deaths'    : onp.diff(samples['mean_z'][:,:T], axis=1, prepend=np.nan)}
-                  
-    fields = {k: fields[k] for k in plot_fields}
-
-    medians = {k: np.median(v, axis=0) for k, v in fields.items()}    
-    pred_intervals = {k: np.percentile(v, (10, 90), axis=0) for k, v in fields.items()}
-    
-    t = np.arange(T) if t is None else t[:T]
-    
-    ax = ax if ax is not None else plt.gca()
-    
-    df = pd.DataFrame(index=t, data=medians)
-    df.plot(ax=ax, legend=legend)
-    median_max = df.max().values
-    
-    colors = [l.get_color() for l in ax.get_lines()]
-        
-    # Add prediction intervals
-    pi_max = 10
-    for i, pi in pred_intervals.values():
-        ax.fill_between(t, pi[0,:], pi[1,:], color=colors[i], alpha=0.1, label='CI')
-        pi_max = np.maximum(pi_max, np.nanmax(pred_interval[1,:]))
-    
-    return median_max, pi_max
-    
     
 def plot_forecast(post_pred_samples, 
                   forecast_samples,
@@ -277,7 +196,7 @@ def run_place(data,
               save_path = 'out',
               **kwargs):
 
-    prob_model = SEIRD_stochastic
+    prob_model = covid.models.SEIRD.SEIRD()
     
     print(f"******* {place} *********")
     confirmed = data[place]['data'].confirmed[start:end]
