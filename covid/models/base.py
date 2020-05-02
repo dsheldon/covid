@@ -138,24 +138,30 @@ class Model():
         else:
             return getattr(cls, c)(samples, **kwargs)  # call method named c
         
+
+    @classmethod
+    def horizon(cls, samples, **kwargs):
+        '''Get time horizon'''
+        y = cls.y(samples, **kwargs)
+        return y.shape[1]
         
+
     @classmethod
     def z(cls, samples, forecast=False, daily=False):
-        return samples['z_future'] if forecast else cls.combine_samples(samples, 'z')
-    
+        return samples['z_future'] if forecast else cls.combine_samples(samples, 'z')    
+
 
     @classmethod
     def y(cls, samples, forecast=False, daily=False):      
         return samples['y_future'] if forecast else cls.combine_samples(samples, 'y')
 
     
-    @classmethod
-    def plot_samples(cls,
+    def plot_samples(self,
                      samples, 
                      plot_fields=['y'],
-                     T=None, 
-                     t=None, 
-                     ax=None,                 
+                     start='2020-03-04',
+                     T=None,
+                     ax=None,          
                      legend=True,
                      daily=False,
                      forecast=False):
@@ -163,20 +169,18 @@ class Model():
         Plotting method for SIR-type models. 
         '''
 
-        x = cls.get(samples, 'S')
-        T_data = x.shape[1]
-        if T is None or T > T_data:
-            T = T_data
+        ax = plt.axes(ax)
 
-        fields = {f: cls.get(samples, f, daily=daily, forecast=forecast)[:,:T] for f in plot_fields}
-        names = {f: cls.names[f] for f in plot_fields}
-
+        T_data = self.horizon(samples, forecast=forecast)        
+        T = T_data if T is None else min(T, T_data) 
+        
+        fields = {f: self.get(samples, f, daily=daily, forecast=forecast)[:,:T] for f in plot_fields}
+        names = {f: self.names[f] for f in plot_fields}
+                
         medians = {names[f]: np.median(v, axis=0) for f, v in fields.items()}    
         pred_intervals = {names[f]: np.percentile(v, (10, 90), axis=0) for f, v in fields.items()}
 
-        t = np.arange(T) if t is None else t[:T]
-
-        ax = ax if ax is not None else plt.gca()
+        t = pd.date_range(start=start, periods=T, freq='D')
 
         ax.set_prop_cycle(None)
 
@@ -191,5 +195,58 @@ class Model():
             ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.1, label='CI')
             pi_max = np.maximum(pi_max, np.nanmax(pi[1,:]))
 
+        return median_max, pi_max
+    
+    
+    def plot_forecast(self,
+                      variable,
+                      post_pred_samples, 
+                      forecast_samples=None,
+                      start='2020-03-04',
+                      T_future=7*4,
+                      ax=None,
+                      obs=None,
+                      daily = False,
+                      scale='lin'):
+
+        ax = plt.axes(ax)
+        
+        # Plot posterior predictive for observed times
+        self.plot_samples(post_pred_samples, ax=ax, start=start, plot_fields=[variable])
+                
+        # Plot forecast
+        T = self.horizon(post_pred_samples)
+        obs_end = pd.to_datetime(start) + pd.Timedelta(T, "d")
+        forecast_start = obs_end + pd.Timedelta("1d")
+        
+        median_max, pi_max = self.plot_samples(forecast_samples,
+                                               start=forecast_start,
+                                               T=T_future,
+                                               ax=ax,
+                                               forecast=True,
+                                               legend=False,
+                                               plot_fields=[variable])
+        
+        # Plot observation
+        obs[start:].plot(ax=ax, style='o')
+        
+        # Plot vertical line at end of observed data
+        ax.axvline(obs_end, linestyle='--', alpha=0.5)
+        ax.grid(axis='y')
+        
+        
+        # Scaling and axis limits
+        if scale == 'log':
+            ax.set_yscale('log')
+
+            # Don't display below 1
+            bottom, top = ax.get_ylim()
+            bottom = 1 if bottom < 1 else bottom
+            ax.set_ylim([bottom, pi_max])
+        else:
+            top = np.minimum(2*median_max, pi_max)
+            ax.set_ylim([0, top])
+
+        
         return median_max, pi_max
         

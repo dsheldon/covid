@@ -20,6 +20,8 @@ from numpyro.infer import MCMC, NUTS, Predictive
 
 from pathlib import Path
 
+import cachetools
+
 
 """
 ************************************************************
@@ -27,6 +29,7 @@ Data
 ************************************************************
 """
 
+@cachetools.func.ttl_cache(ttl=600)
 def load_world_data():
     # world data
     world = jhu.load_world()
@@ -103,54 +106,6 @@ Plotting
 ************************************************************
 """
     
-def plot_forecast(self,
-                  post_pred_samples, 
-                  forecast_samples,
-                  T_future,
-                  confirmed,
-                  start='2020-03-04',
-                  scale='log',
-                  death = None,
-                  daily = False,
-                  **kwargs):
-
-    fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
-    
-    variables = ['y', 'z']
-    observations = [confirmed, death]
-        
-    for variable, observation, ax in zip(variables, observations, axes):
-
-        # Plot posterior predictive for observed times
-        T = self.get(variable, post_pred_samples).shape[1]
-        t = pd.date_range(start=start, periods=T, freq="D")
-        self.plot_samples(post_pred_samples, ax=ax, t=t, plot_fields=[variable])
-                
-        # Plot forecast
-        forecast_start = t.max() + pd.Timedelta("1d")
-        t_future = pd.date_range(start=forecast_start, periods=T_future, freq="1d")
-        median_max, pi_max = self.plot_samples(forecast_samples, t=t_future, ax=ax, plot_fields=[variable], **kwargs)
-        
-        # Plot observation
-        observation[start:].plot(ax=ax, style='o')
-        
-        # Plot forecast start at final observed data
-        ax.axvline(t.max(), linestyle='--', alpha=0.5)
-        ax.grid(axis='y')
-
-        if scale == 'log':
-            ax.set_yscale('log')
-
-            # Don't display below 1
-            bottom, top = ax.get_ylim()
-            bottom = 1 if bottom < 1 else bottom
-            ax.set_ylim([bottom, pi_max])
-        else:
-            top = np.minimum(2*median_max, pi_max)
-            ax.set_ylim([0, top])
-
-    return fig, ax
-
 def plot_R0(mcmc_samples, start):
 
     fig = plt.figure(figsize=(5,3))
@@ -182,6 +137,7 @@ Running
 
 def run_place(data, 
               place, 
+              model_type=covid.models.SEIRD.SEIRD,
               start = '2020-03-04',
               end = None,
               save = True,
@@ -196,7 +152,7 @@ def run_place(data,
     place_data = data[place]['data'][start:end]
     T = len(place_data)
 
-    model = covid.models.SEIRD.SEIRD(
+    model = model_type(
         data = place_data,
         T = T,
         N = data[place]['pop'],
@@ -274,6 +230,7 @@ def load_samples(place, path='out'):
 
 def gen_forecasts(data, 
                   place, 
+                  model_type=covid.models.SEIRD.SEIRD,
                   start = '2020-03-04', 
                   end=None,
                   load_path = 'out',
@@ -282,31 +239,42 @@ def gen_forecasts(data,
                   show = True, 
                   **kwargs):
     
+    
+    model = model_type()
+    
     Path(save_path).mkdir(parents=True, exist_ok=True)
     
     confirmed = data[place]['data'].confirmed[start:end]
     death = data[place]['data'].death[start:end]
-    start_ = confirmed.index.min()
 
     T = len(confirmed)
     N = data[place]['pop']
 
-    prior_samples, mcmc_samples, post_pred_samples = load_samples(place, path=load_path)
+    _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(place, path=load_path)
     
     for scale in ['log', 'lin']:
         for T in [65, 100, 150]:
 
-            t = pd.date_range(start=start_, periods=T, freq='D')
+            fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
 
-            fig, ax = plot_forecast(post_pred_samples,
-                                    forecast_samples,
-                                      
-                                    T, confirmed, 
-                                    t = t, 
-                                    scale = scale, 
-                                    death = death,
-                                    **kwargs)
-            
+            model.plot_forecast('y',
+                                post_pred_samples,
+                                forecast_samples,
+                                start,
+                                T_future=T,
+                                obs=confirmed,
+                                ax=axes[0],
+                                scale=scale)
+
+            model.plot_forecast('z',
+                                post_pred_samples,
+                                forecast_samples,
+                                start,
+                                T_future=T,
+                                obs=death,
+                                ax=axes[1],
+                                scale=scale)
+
             name = data[place]['name']
             plt.suptitle(f'{name} {T} days ')
             plt.tight_layout()
@@ -318,7 +286,7 @@ def gen_forecasts(data,
             if show:
                 plt.show()
             
-    fig = plot_R0(mcmc_samples, start_)    
+    fig = plot_R0(mcmc_samples, start)    
     plt.title(place)
     plt.tight_layout()
     
@@ -328,8 +296,3 @@ def gen_forecasts(data,
 
     if show:
         plt.show()        
-
-
-def get_world_pop_data():
-     return (dict(zip(names, population)))
-        

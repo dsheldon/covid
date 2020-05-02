@@ -27,7 +27,7 @@ class SEIRD(Model):
 
         return {
             'confirmed': self.data['confirmed'].values,
-            'death': self.data['deaths'].values
+            'death': self.data['death'].values
            }
     
     
