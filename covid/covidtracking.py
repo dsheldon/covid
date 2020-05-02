@@ -10,6 +10,7 @@ def load_us():
     df = df.set_index('date')
     df = df.drop(columns=['dateChecked'])
     df['confirmed'] = df['positive'] # useful alias to match other data
+    df['deaths'] = df['death']
     df = df.pivot(columns='state')
     df.columns = df.columns.swaplevel()
     df.sort_index(axis=1, inplace=True)

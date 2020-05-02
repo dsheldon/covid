@@ -36,8 +36,6 @@ def load_world():
     df = df.reorder_levels([1,2,0], axis=1).sort_index(axis=1)
 
     return df
-    
-    return df
         
 #@functools.lru_cache(128)
 @cachetools.func.ttl_cache(ttl=3600)

@@ -19,19 +19,18 @@ class SEIRD(Model):
 
     compartments = ['S', 'E', 'I', 'R', 'H', 'D', 'C']
 
-    def __init__(self, data=None, **args):
+    @property
+    def obs(self):
+        
+        if self.data is None:
+            return {}
 
-        super().__init__(**args)
-
-        if data is not None:
-            # These are passed to __call__ during the inference
-            # and forecasting stages
-            self.obs_args = {
-                'confirmed': data['confirmed'].values,
-                'death': data['death'].values
-            }
+        return {
+            'confirmed': self.data['confirmed'].values,
+            'death': self.data['deaths'].values
+           }
     
-
+    
     def __call__(self,
                  T = 50,
                  N = 1e5,
@@ -53,8 +52,8 @@ class SEIRD(Model):
 
         '''
         Stochastic SEIR model. Draws random parameters and runs dynamics.
-        '''
-
+        '''        
+                
         # Sample initial number of infected individuals
         I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
         E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))

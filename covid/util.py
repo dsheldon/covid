@@ -21,7 +21,6 @@ from numpyro.infer import MCMC, NUTS, Predictive
 from pathlib import Path
 
 
-
 """
 ************************************************************
 Data
@@ -104,38 +103,39 @@ Plotting
 ************************************************************
 """
     
-def plot_forecast(post_pred_samples, 
+def plot_forecast(self,
+                  post_pred_samples, 
                   forecast_samples,
-                  T, 
-                  confirmed, 
-                  t = None, 
+                  T_future,
+                  confirmed,
+                  start='2020-03-04',
                   scale='log',
-                  n_samples= 100,
                   death = None,
                   daily = False,
                   **kwargs):
 
-    t = t if t is not None else np.arange(T)
-
-    fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)
+    fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
     
-    
-    if daily:
-        variables = ['daily confirmed', 'daily deaths']
-        w = 7
-        min_periods = 1
-        observations = [confirmed.diff().rolling(w, min_periods=min_periods, center=True).mean(), 
-                        death.diff().rolling(w, min_periods=min_periods, center=True).mean()]
-    else:
-        variables = ['total confirmed', 'total deaths']
-        observations = [confirmed, death]
+    variables = ['y', 'z']
+    observations = [confirmed, death]
         
     for variable, observation, ax in zip(variables, observations, axes):
-    
-        median_max, pi_max = plot_samples(post_pred_samples, T=T, t=t, ax=ax, plot_fields=[variable], **kwargs)
-        observation.plot(ax=ax, style='o')
-    
-        ax.axvline(observation.index.max(), linestyle='--', alpha=0.5)
+
+        # Plot posterior predictive for observed times
+        T = self.get(variable, post_pred_samples).shape[1]
+        t = pd.date_range(start=start, periods=T, freq="D")
+        self.plot_samples(post_pred_samples, ax=ax, t=t, plot_fields=[variable])
+                
+        # Plot forecast
+        forecast_start = t.max() + pd.Timedelta("1d")
+        t_future = pd.date_range(start=forecast_start, periods=T_future, freq="1d")
+        median_max, pi_max = self.plot_samples(forecast_samples, t=t_future, ax=ax, plot_fields=[variable], **kwargs)
+        
+        # Plot observation
+        observation[start:].plot(ax=ax, style='o')
+        
+        # Plot forecast start at final observed data
+        ax.axvline(t.max(), linestyle='--', alpha=0.5)
         ax.grid(axis='y')
 
         if scale == 'log':
@@ -184,84 +184,58 @@ def run_place(data,
               place, 
               start = '2020-03-04',
               end = None,
-              confirmed_min = 10,
-              confirmed_ignore_last = 0,
-              death_min = 5,
               save = True,
               num_warmup = 1000,
               num_samples = 1000,
               num_chains = 1,
-              num_prior_samples = 1000,
-              T_future=26*7,
+              num_prior_samples = 0,              
+              T_future=4*7,
               save_path = 'out',
               **kwargs):
 
-    prob_model = covid.models.SEIRD.SEIRD()
+    place_data = data[place]['data'][start:end]
+    T = len(place_data)
+
+    model = covid.models.SEIRD.SEIRD(
+        data = place_data,
+        T = T,
+        N = data[place]['pop'],
+    )
     
-    print(f"******* {place} *********")
-    confirmed = data[place]['data'].confirmed[start:end]
-    death = data[place]['data'].death[start:end]
+    print(" * running MCMC")
+    mcmc_samples = model.infer(num_warmup=num_warmup, 
+                               num_samples=num_samples)
 
-    # ignore last few confirmed cases reports
-    window_start = confirmed.index.max() - pd.Timedelta(confirmed_ignore_last - 1, "d")
-    confirmed[window_start:] = np.nan
-    
-    start = confirmed.index.min()
+    # Prior samples
+    prior_samples = None
+    if num_prior_samples > 0:
+        print(" * collecting prior samples")
+        prior_samples = model.prior(num_samples=num_prior_samples)
 
-#     confirmed[confirmed < confirmed_min] = np.nan
-#     death[death < death_min] = np.nan
-    
-    T = len(confirmed)
-    N = data[place]['pop']
+    # In-sample posterior predictive samples (don't condition on observations)
+    print(" * collecting predictive samples")
+    post_pred_samples = model.predictive()
 
-    args = {
-        'N': N,
-        'T': T,
-        'rw_scale': 2e-1
-    }
-
-    args = dict(args, **kwargs)
-    
-    kernel = NUTS(prob_model,
-                  init_strategy = numpyro.infer.util.init_to_median())
-
-    mcmc = MCMC(kernel, 
-                num_warmup=num_warmup, 
-                num_samples=num_samples, 
-                num_chains=num_chains)
-
-    print("Running MCMC")
-    mcmc.run(jax.random.PRNGKey(2),
-             obs = confirmed.values,
-             death = death.values,
-             **args)
-
-    mcmc.print_summary()
-    mcmc_samples = mcmc.get_samples()
-    
-    # Prior samples for comparison
-    prior = Predictive(prob_model, posterior_samples = {}, num_samples = num_prior_samples)
-    prior_samples = prior(PRNGKey(2), **args)
-
-    # Posterior predictive samples for visualization
-    args['rw_scale'] = 0 # disable random walk for forecasting
-    post_pred = Predictive(prob_model, posterior_samples = mcmc_samples)
-    post_pred_samples = post_pred(PRNGKey(2), T_future=T_future, **args)
-
+    # Forecasting posterior predictive (do condition on observations)
+    print(" * collecting forecast samples")
+    forecast_samples = model.forecast(T_future=T_future)
+        
     if save:
         save_samples(place,
                      prior_samples,
                      mcmc_samples, 
                      post_pred_samples,
+                     forecast_samples,
                      path=save_path)
         
-        write_summary(place, mcmc, path=save_path)
+        write_summary(place, model.mcmc, path=save_path)
 
         
 def save_samples(place, 
                  prior_samples,
                  mcmc_samples, 
                  post_pred_samples,
+                 forecast_samples,
                  path='out'):
     
     # Save samples
@@ -270,7 +244,8 @@ def save_samples(place,
     np.savez(filename, 
              prior_samples = prior_samples,
              mcmc_samples = mcmc_samples, 
-             post_pred_samples = post_pred_samples)
+             post_pred_samples = post_pred_samples,
+             forecast_samples = forecast_samples)
 
 
 def write_summary(place, mcmc, path='out'):
@@ -292,8 +267,9 @@ def load_samples(place, path='out'):
     prior_samples = x['prior_samples'].item()
     mcmc_samples = x['mcmc_samples'].item()
     post_pred_samples = x['post_pred_samples'].item()
+    forecast_samples = x['forecast_samples'].item()
     
-    return prior_samples, mcmc_samples, post_pred_samples
+    return prior_samples, mcmc_samples, post_pred_samples, forecast_samples
 
 
 def gen_forecasts(data, 
@@ -322,7 +298,10 @@ def gen_forecasts(data,
 
             t = pd.date_range(start=start_, periods=T, freq='D')
 
-            fig, ax = plot_forecast(post_pred_samples, T, confirmed, 
+            fig, ax = plot_forecast(post_pred_samples,
+                                    forecast_samples,
+                                      
+                                    T, confirmed, 
                                     t = t, 
                                     scale = scale, 
                                     death = death,

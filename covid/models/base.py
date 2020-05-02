@@ -1,11 +1,13 @@
 import numpyro
 from numpyro.infer import MCMC, NUTS, Predictive
 
+import jax
+import jax.numpy as np
+from jax.random import PRNGKey
+
 import numpy as onp
 import pandas as pd
 import matplotlib.pyplot as plt
-
-from jax.random import PRNGKey
 
 
 """
@@ -29,12 +31,21 @@ class Model():
     }
             
     
-    def __init__(self, mcmc_samples=None, **args):
+    def __init__(self, data=None, mcmc_samples=None, **args):
         self.mcmc_samples = mcmc_samples
-        self.obs_args = {} # set by subclass
+        self.data = data
         self.args = args
+
         
+    @property
+    def obs():
+        '''Gives extra arguments corresponding to observations
+        
+        Provided to callable during inference and forecasting
+        '''
+        return {}
     
+
     """
     ***************************************
     Inference and sampling routines
@@ -44,7 +55,7 @@ class Model():
     def infer(self, num_warmup=1000, num_samples=1000, num_chains=1, rng_key=PRNGKey(1), **args):
         '''Fit using MCMC'''
         
-        args = dict(self.args, **args, **self.obs_args)
+        args = dict(self.args, **args)
         
         kernel = NUTS(self, init_strategy = numpyro.infer.util.init_to_median())
 
@@ -52,10 +63,8 @@ class Model():
                     num_warmup=num_warmup, 
                     num_samples=num_samples, 
                     num_chains=num_chains)
-     
-        print(" * running MCMC")
-        
-        mcmc.run(rng_key, **args)    
+             
+        mcmc.run(rng_key, **self.obs, **args)    
         mcmc.print_summary()
         
         self.mcmc = mcmc
@@ -91,8 +100,8 @@ class Model():
 
         predictive = Predictive(self, posterior_samples=self.mcmc_samples)
 
-        args = dict(self.args, **args, **self.obs_args)        
-        return predictive(rng_key, **args)
+        args = dict(self.args, **args)
+        return predictive(rng_key, **self.obs, **args)
         
     
     """
@@ -182,5 +191,5 @@ class Model():
             ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.1, label='CI')
             pi_max = np.maximum(pi_max, np.nanmax(pi[1,:]))
 
-        return median_max, pi_max        
+        return median_max, pi_max
         
