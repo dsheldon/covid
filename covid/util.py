@@ -257,41 +257,40 @@ def gen_forecasts(data,
     N = data[place]['pop']
 
     _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(place, path=load_path)
+        
+    for daily in [False, True]:
+        for scale in ['log', 'lin']:
+            for T in [28]:
 
-    
-    for scale in ['log', 'lin']:
-        for T in [4*7]:
+                fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
 
-            fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
+                if daily:
+                    variables = ['dy', 'dz']
+                    observations = [confirmed.diff(), death.diff()]
+                else:
+                    variables = ['y', 'z']
+                    observations= [confirmed, death]
 
-            model.plot_forecast('dy',
-                                post_pred_samples,
-                                forecast_samples,
-                                start,
-                                T_future=T,
-                                obs=confirmed.diff(),
-                                ax=axes[0],
-                                scale=scale)
+                for variable, obs, ax in zip(variables, observations, axes):
+                    model.plot_forecast(variable,
+                                        post_pred_samples,
+                                        forecast_samples,
+                                        start,
+                                        T_future=T,
+                                        obs=obs,
+                                        ax=ax,
+                                        scale=scale)
 
-            model.plot_forecast('dz',
-                                post_pred_samples,
-                                forecast_samples,
-                                start,
-                                T_future=T,
-                                obs=death.diff(),
-                                ax=axes[1],
-                                scale=scale)
+                name = data[place]['name']
+                plt.suptitle(f'{name} {T} days ')
+                plt.tight_layout()
 
-            name = data[place]['name']
-            plt.suptitle(f'{name} {T} days ')
-            plt.tight_layout()
+                if save:
+                    filename = f'{save_path}/{place}_scale_{scale}_daily_{daily}_T_{T}.png'
+                    plt.savefig(filename)
 
-            if save:
-                filename = f'{save_path}/{place}_predictive_scale_{scale}_T_{T}.png'
-                plt.savefig(filename)
-                
-            if show:
-                plt.show()
+                if show:
+                    plt.show()
             
     fig = plot_R0(mcmc_samples, start)    
     plt.title(place)
