@@ -74,6 +74,12 @@ def load_state_data(source="jhu"):
     return state_data
 
 
+def load_data(us_source="jhu"):
+    state_data = load_state_data(source=us_source)
+    world_data = load_world_data()
+    return dict(world_data, **state_data)
+
+
 def load_state_Xy(which=None):
     X_place = states.uga_traits().drop('DC') # incomplete data for DC
     X = states.uga_interventions()
@@ -251,27 +257,28 @@ def gen_forecasts(data,
     N = data[place]['pop']
 
     _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(place, path=load_path)
+
     
     for scale in ['log', 'lin']:
-        for T in [65, 100, 150]:
+        for T in [4*7]:
 
             fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
 
-            model.plot_forecast('y',
+            model.plot_forecast('dy',
                                 post_pred_samples,
                                 forecast_samples,
                                 start,
                                 T_future=T,
-                                obs=confirmed,
+                                obs=confirmed.diff(),
                                 ax=axes[0],
                                 scale=scale)
 
-            model.plot_forecast('z',
+            model.plot_forecast('dz',
                                 post_pred_samples,
                                 forecast_samples,
                                 start,
                                 T_future=T,
-                                obs=death,
+                                obs=death.diff(),
                                 ax=axes[1],
                                 scale=scale)
 

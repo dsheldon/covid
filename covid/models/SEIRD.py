@@ -1,13 +1,15 @@
 import jax
 import jax.numpy as np
+from jax.random import PRNGKey
 
 import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
 from .util import observe, ExponentialRandomWalk
-from .base import Model
+from .base import SEIRDBase
 
+import numpy as onp
 
 """
 ************************************************************
@@ -15,21 +17,7 @@ SEIRD model
 ************************************************************
 """
 
-class SEIRD(Model):
-
-    compartments = ['S', 'E', 'I', 'R', 'H', 'D', 'C']
-
-    @property
-    def obs(self):
-        
-        if self.data is None:
-            return {}
-
-        return {
-            'confirmed': self.data['confirmed'].values,
-            'death': self.data['death'].values
-           }
-    
+class SEIRD(SEIRDBase):    
     
     def __call__(self,
                  T = 50,

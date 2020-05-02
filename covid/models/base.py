@@ -1,4 +1,5 @@
 import numpyro
+import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS, Predictive
 
 import jax
@@ -27,7 +28,9 @@ class Model():
         'D': 'dead',
         'C': 'cumulative infected',
         'y': 'confirmed',
-        'z': 'deaths'
+        'z': 'deaths',
+        'dy': 'daily confirmed',
+        'dz': 'daily deaths'
     }
             
     
@@ -38,10 +41,10 @@ class Model():
 
         
     @property
-    def obs():
-        '''Gives extra arguments corresponding to observations
+    def obs(self):
+        '''Provide extra arguments for observations
         
-        Provided to callable during inference and forecasting
+        Used during inference and forecasting
         '''
         return {}
     
@@ -110,51 +113,47 @@ class Model():
     ***************************************
     """    
     
-    @classmethod
-    def combine_samples(cls, samples, f):
+    def combine_samples(self, samples, f, use_future=False):
         '''Combine fields like x0, x, x_future into a single array'''
         
         f0, f_future = f + '0', f + '_future'
         data = np.concatenate((samples[f0][:,None], samples[f]), axis=1)
-        if f_future in samples:
+        if f_future in samples and use_future:
             data = np.concatenate((data, samples[f_future]), axis=1)
         return data
     
     
-    @classmethod
-    def get(cls, samples, c, **kwargs):
+    def get(self, samples, c, **kwargs):
         
-        daily = kwargs.get('daily', False)
         forecast = kwargs.get('forecast', False)
         
-        if c in cls.compartments:
-            x = samples['x_future'] if forecast else cls.combine_samples(samples, 'x')
-            if daily:
-                x = onp.diff(x, prepend=0.)
-                
-            j = cls.compartments.index(c)
+        if c in self.compartments:
+            x = samples['x_future'] if forecast else self.combine_samples(samples, 'x')
+            j = self.compartments.index(c)
             return x[:,:,j]
         
         else:
-            return getattr(cls, c)(samples, **kwargs)  # call method named c
+            return getattr(self, c)(samples, **kwargs)  # call method named c
         
 
-    @classmethod
-    def horizon(cls, samples, **kwargs):
+    def horizon(self, samples, **kwargs):
         '''Get time horizon'''
-        y = cls.y(samples, **kwargs)
+        y = self.y(samples, **kwargs)
         return y.shape[1]
         
-
-    @classmethod
-    def z(cls, samples, forecast=False, daily=False):
-        return samples['z_future'] if forecast else cls.combine_samples(samples, 'z')    
-
-
-    @classmethod
-    def y(cls, samples, forecast=False, daily=False):      
-        return samples['y_future'] if forecast else cls.combine_samples(samples, 'y')
-
+    
+    '''Define access methods for time varying fields using a factory function'''
+    def getter(f):
+        def get(self, samples, forecast=False):
+            return samples[f + '_future'] if forecast else self.combine_samples(samples, f)
+        return get
+    
+    '''These are methods e.g., call self.z(samples) to get z'''
+    z = getter('z')
+    y = getter('y')
+    mean_y = getter('mean_y')
+    mean_z = getter('mean_z')
+    
     
     def plot_samples(self,
                      samples, 
@@ -163,7 +162,6 @@ class Model():
                      T=None,
                      ax=None,          
                      legend=True,
-                     daily=False,
                      forecast=False):
         '''
         Plotting method for SIR-type models. 
@@ -174,7 +172,7 @@ class Model():
         T_data = self.horizon(samples, forecast=forecast)        
         T = T_data if T is None else min(T, T_data) 
         
-        fields = {f: self.get(samples, f, daily=daily, forecast=forecast)[:,:T] for f in plot_fields}
+        fields = {f: self.get(samples, f, forecast=forecast)[:,:T] for f in plot_fields}
         names = {f: self.names[f] for f in plot_fields}
                 
         medians = {names[f]: np.median(v, axis=0) for f, v in fields.items()}    
@@ -206,7 +204,6 @@ class Model():
                       T_future=7*4,
                       ax=None,
                       obs=None,
-                      daily = False,
                       scale='lin'):
 
         ax = plt.axes(ax)
@@ -249,4 +246,48 @@ class Model():
 
         
         return median_max, pi_max
+    
+    
+    
+class SEIRDBase(Model):
+
+    compartments = ['S', 'E', 'I', 'R', 'H', 'D', 'C']
+
+    @property
+    def obs(self):
+        '''Provide extra arguments for observations
         
+        Used during inference and forecasting
+        '''        
+        if self.data is None:
+            return {}
+
+        return {
+            'confirmed': self.data['confirmed'].values,
+            'death': self.data['death'].values
+           }
+    
+    
+    def dz(self, samples, **args):
+        '''Daily deaths'''
+        mean_z = self.mean_z(samples, **args)
+        if args.get('forecast'):
+            first = self.mean_z(samples, forecast=False)[:,-1,None]
+        else:
+            first = np.nan
+            
+        dz_mean = onp.diff(mean_z, axis=1, prepend=first)        
+        dz = dist.Normal(dz_mean, 0.3 * dz_mean).sample(PRNGKey(1))
+        return dz
+        
+    def dy(self, samples, **args):
+        '''Daily confirmed cases'''
+        mean_y = self.mean_y(samples, **args)
+        if args.get('forecast'):
+            first = self.mean_y(samples, forecast=False)[:,-1,None]
+        else:
+            first = np.nan
+            
+        dy_mean = onp.diff(mean_y, axis=1, prepend=first)
+        dy = dist.Normal(dy_mean, 0.3 * dy_mean).sample(PRNGKey(1))
+        return dy
