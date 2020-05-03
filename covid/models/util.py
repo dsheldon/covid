@@ -55,6 +55,31 @@ def ExponentialRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
         ]
     )
 
+def LogisticRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
+    '''
+    Return distrubtion of exponentiated Gaussian random walk
+   
+    Variables are x_0, ..., x_{T-1}
+   
+    Dynamics in log-space are random walk with drift:
+       log(x_0) := log(loc)
+       log(x_t) := log(x_{t-1}) + drift + eps_t,    eps_t ~ N(0, scale)
+    
+    ==> Dynamics in non-log space are:
+        x_0 := loc
+        x_t := x_{t-1} * exp(drift + eps_t),    eps_t ~ N(0, scale)
+    '''
+   
+    logistic_loc = np.log(loc/(1-loc)) + drift * np.arange(num_steps, dtype='float32')
+   
+    return dist.TransformedDistribution(
+        dist.GaussianRandomWalk(scale=scale, num_steps=num_steps),
+        [
+            dist.transforms.AffineTransform(loc = logistic_loc, scale=1.),
+            dist.transforms.SigmoidTransform()
+        ]
+    )
+
 
 
 def observe(*args, **kwargs):
