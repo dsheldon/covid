@@ -153,6 +153,7 @@ def run_place(data,
               num_prior_samples = 0,              
               T_future=4*7,
               save_path = 'out',
+              model_abrv = "SEIRD",
               **kwargs):
 
     place_data = data[place]['data'][start:end]
@@ -188,9 +189,9 @@ def run_place(data,
                      mcmc_samples, 
                      post_pred_samples,
                      forecast_samples,
-                     path=save_path)
+                     path=model_abrv+"_"+save_path)
         
-        write_summary(place, model.mcmc, path=save_path)
+        write_summary(place, model.mcmc, path=model_abrv+"_"+save_path)
 
         
 def save_samples(place, 
@@ -237,6 +238,7 @@ def load_samples(place, path='out'):
 def gen_forecasts(data, 
                   place, 
                   model_type=covid.models.SEIRD.SEIRD,
+                  model_abrv = "SERID",
                   start = '2020-03-04', 
                   end=None,
                   load_path = 'out',
@@ -248,7 +250,7 @@ def gen_forecasts(data,
     
     model = model_type()
     
-    Path(save_path).mkdir(parents=True, exist_ok=True)
+    Path(model_abrv + "_" + save_path).mkdir(parents=True, exist_ok=True)
     
     confirmed = data[place]['data'].confirmed[start:end]
     death = data[place]['data'].death[start:end]
@@ -256,7 +258,7 @@ def gen_forecasts(data,
     T = len(confirmed)
     N = data[place]['pop']
 
-    _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(place, path=load_path)
+    _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(place, path=model_abrv + "_" + load_path)
         
     for daily in [False, True]:
         for scale in ['log', 'lin']:
@@ -286,7 +288,7 @@ def gen_forecasts(data,
                 plt.tight_layout()
 
                 if save:
-                    filename = f'{save_path}/{place}_scale_{scale}_daily_{daily}_T_{T}.png'
+                    filename = f'{model_abrv + "_" + save_path}/{place}_scale_{scale}_daily_{daily}_T_{T}.png'
                     plt.savefig(filename)
 
                 if show:
@@ -297,8 +299,31 @@ def gen_forecasts(data,
     plt.tight_layout()
     
     if save:
-        filename = f'{save_path}/{place}_R0.png'
+        filename = f'{model_abrv + "_" + save_path}/{place}_R0.png'
         plt.savefig(filename)
 
     if show:
-        plt.show()        
+        plt.show()   
+        
+        
+        
+def score_forecats(start,place,data,model_abrv="SEIRD",model=covid.models.SEIRD.SEIRD()):
+
+    prior_samples, mcmc_samples, post_pred_samples, forecast_samples = \
+        load_samples(place,path=model_abrv + "_out")
+    # cumulative deaths 
+    death = data[place]['data'][start:].death
+    end = death.index.max()
+
+    obs = death[start:]
+
+    T = len(obs)
+    z = model.get(forecast_samples, 'z', forecast=True)[:,:T]
+    df = pd.DataFrame(index=obs.index, data=z.T)
+
+    point_forecast = df.median(axis=1)
+    err = (obs-point_forecast).rename('err')
+    err_plot = err.plot(style='o')
+
+    mae = err.abs().mean()
+    return err_plot,mae
