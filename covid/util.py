@@ -239,7 +239,7 @@ def load_samples(place, path='out'):
 def gen_forecasts(data, 
                   place, 
                   model_type=covid.models.SEIRD.SEIRD,
-                  model_abrv = "SERID",
+                  model_abrv = "SEIRD",
                   start = '2020-03-04', 
                   end=None,
                   load_path = 'out',
