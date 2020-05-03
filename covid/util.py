@@ -162,6 +162,7 @@ def run_place(data,
         data = place_data,
         T = T,
         N = data[place]['pop'],
+        **kwargs
     )
     
     print(" * running MCMC")
