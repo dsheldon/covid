@@ -30,20 +30,20 @@
 
     Scale:
     <select id="scale">
-      <option value="log" selected>log</option>
-      <option value="lin">linear</option>
+      <option value="lin" selected>linear</option>
+      <option value="log">logarithmic</option>
     </select>
 
     Target:
     <select id="target">
-      <option value="True" selected>daily</option>
-      <option value="False">cumulative</option>
+      <option value="False" selected>cumulative</option>
+      <option value="True">daily</option>
     </select>
 
     Time horizon:
     <select id="horizon">
-      <option value="28" selected>4 weeks</option>
-      <option disabled value="42">6 weeks</option>
+      <option value="14" selected>2 weeks</option>
+      <option value="28">4 weeks</option>
     </select>
 
   </body>
@@ -79,7 +79,7 @@
             .attr("src", (d, i) => d + '_R0.png');
 
         divs.selectAll(".forecast")
-            .attr("src", (d, i) => d + "_predictive_scale_" + scale + "_T_" + T + ".png");
+            .attr("src", (d, i) => d + "_scale_" + scale + "_daily_" + daily + "_T_" + T + ".png");
     }
 
     load();
