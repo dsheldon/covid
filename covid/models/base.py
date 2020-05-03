@@ -225,7 +225,8 @@ class Model():
                                                plot_fields=[variable])
         
         # Plot observation
-        obs[start:].plot(ax=ax, style='o')
+        forecast_end = forecast_start + pd.Timedelta(T_future-1, "d")
+        obs[start:forecast_end].plot(ax=ax, style='o')
         
         # Plot vertical line at end of observed data
         ax.axvline(obs_end, linestyle='--', alpha=0.5)
