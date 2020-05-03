@@ -213,7 +213,7 @@ class Model():
                 
         # Plot forecast
         T = self.horizon(post_pred_samples)
-        obs_end = pd.to_datetime(start) + pd.Timedelta(T, "d")
+        obs_end = pd.to_datetime(start) + pd.Timedelta(T-1, "d")
         forecast_start = obs_end + pd.Timedelta("1d")
         
         median_max, pi_max = self.plot_samples(forecast_samples,
