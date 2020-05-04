@@ -339,5 +339,5 @@ def score_forecats(start,place,data,model_abrv="SEIRD",model=covid.models.SEIRD.
          err = (obs-point_forecast).rename('err')
          err_plot = err.plot(style='o')
 
-         mae = err.abs().mean()
-    return err_plot,mae
+         err = err.abs().mean()
+    return err_plot,err
