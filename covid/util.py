@@ -307,7 +307,7 @@ def gen_forecasts(data,
         
         
         
-def score_forecats(start,place,data,model_abrv="SEIRD",model=covid.models.SEIRD.SEIRD()):
+def score_forecats(start,place,data,model_abrv="SEIRD",model=covid.models.SEIRD.SEIRD(),method="mae"):
 
     prior_samples, mcmc_samples, post_pred_samples, forecast_samples = \
         load_samples(place,path=model_abrv + "_out")
@@ -320,10 +320,23 @@ def score_forecats(start,place,data,model_abrv="SEIRD",model=covid.models.SEIRD.
     T = len(obs)
     z = model.get(forecast_samples, 'z', forecast=True)[:,:T]
     df = pd.DataFrame(index=obs.index, data=z.T)
+ 
 
-    point_forecast = df.median(axis=1)
-    err = (obs-point_forecast).rename('err')
-    err_plot = err.plot(style='o')
+    if method == "ls":
+         
+          ls = []
 
-    mae = err.abs().mean()
+          for index, row in df.iterrows():
+               ls.append(sum((round(df.loc[index,:]) < (round(obs.loc[index]) + 100) )&
+          (round(df.loc[index,:]) > (round(obs.loc[index]) - 100))))
+
+
+          err = np.mean(np.clip(np.log(np.array(ls)),-10))
+          err_plot = err.plot(style='0')     
+    else:
+         point_forecast = df.median(axis=1)
+         err = (obs-point_forecast).rename('err')
+         err_plot = err.plot(style='o')
+
+         mae = err.abs().mean()
     return err_plot,mae
