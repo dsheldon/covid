@@ -318,16 +318,18 @@ def score_forecasts(start,
                     place,
                     data,
                     prefix="results",
-                    model=covid.models.SEIRD.SEIRD(),
+                    model_type=covid.models.SEIRD.SEIRD,
+                    eval_date=None,
                     method="mae"):
 
+    model = model_type()
     
     filename = Path(prefix) / 'samples' / f'{place}.npz'
     prior_samples, mcmc_samples, post_pred_samples, forecast_samples = \
         load_samples(filename)
 
     # cumulative deaths 
-    death = data[place]['data'][start:].death
+    death = data[place]['data'][start:eval_date].death
     end = death.index.max()
 
     obs = death[start:]
@@ -345,13 +347,16 @@ def score_forecasts(start,
                ls.append(sum((round(df.loc[index,:]) < (round(obs.loc[index]) + 100) )&
           (round(df.loc[index,:]) > (round(obs.loc[index]) - 100))))
 
-
           err = np.mean(np.clip(np.log(np.array(ls)),-10))
-          err_plot = err.plot(style='0')     
+          #err_plot = err.plot(style='0')     
     else:
          point_forecast = df.median(axis=1)
-         err = (obs-point_forecast).rename('err')
-         err_plot = err.plot(style='o')
+         
+         errs = (obs-point_forecast).rename('errs')
 
-         err = err.abs().mean()
-    return err_plot,err
+         err = errs[eval_date] if eval_date is not None else errs.values[-1]
+
+         #err_plot = err.plot(style='o')
+         #err = err.abs().mean()
+
+    return err
