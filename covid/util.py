@@ -311,10 +311,18 @@ def gen_forecasts(data,
         
         
         
-def score_forecats(start,place,data,model_abrv="SEIRD",model=covid.models.SEIRD.SEIRD(),method="mae"):
+def score_forecasts(start,
+                    place,
+                    data,
+                    prefix="results",
+                    model=covid.models.SEIRD.SEIRD(),
+                    method="mae"):
 
+    
+    filename = Path(prefix) / 'samples' / f'{place}.npz'
     prior_samples, mcmc_samples, post_pred_samples, forecast_samples = \
-        load_samples(place,path=model_abrv + "_out")
+        load_samples(filename)
+
     # cumulative deaths 
     death = data[place]['data'][start:].death
     end = death.index.max()
