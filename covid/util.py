@@ -152,8 +152,7 @@ def run_place(data,
               num_chains = 1,
               num_prior_samples = 0,              
               T_future=4*7,
-              save_path = 'out',
-              model_abrv = "SEIRD",
+              prefix = "default",
               **kwargs):
 
     place_data = data[place]['data'][start:end]
@@ -185,26 +184,28 @@ def run_place(data,
     forecast_samples = model.forecast(T_future=T_future)
         
     if save:
-        save_samples(place,
+
+        # Save samples
+        path = Path(prefix) / 'out'
+        path.mkdir(parents=True, exist_ok=True)
+
+        filename = path / f'{place}_samples.npz'
+        save_samples(filename,
                      prior_samples,
                      mcmc_samples, 
                      post_pred_samples,
-                     forecast_samples,
-                     path=model_abrv+"_"+save_path)
+                     forecast_samples)
         
-        write_summary(place, model.mcmc, path=model_abrv+"_"+save_path)
+        filename = path / f'{place}_summary.txt'
+        write_summary(filename, model.mcmc)
 
         
-def save_samples(place, 
+def save_samples(filename, 
                  prior_samples,
                  mcmc_samples, 
                  post_pred_samples,
-                 forecast_samples,
-                 path='out'):
+                 forecast_samples):
     
-    # Save samples
-    Path(path).mkdir(parents=True, exist_ok=True)
-    filename = f'{path}/{place}_samples.npz'
     np.savez(filename, 
              prior_samples = prior_samples,
              mcmc_samples = mcmc_samples, 
@@ -212,10 +213,8 @@ def save_samples(place,
              forecast_samples = forecast_samples)
 
 
-def write_summary(place, mcmc, path='out'):
+def write_summary(filename, mcmc):
     # Write diagnostics to file
-    Path(path).mkdir(parents=True, exist_ok=True)
-    filename = f'out/{place}_summary.txt'
     orig_stdout = sys.stdout
     with open(filename, 'w') as f:
         sys.stdout = f
@@ -223,9 +222,8 @@ def write_summary(place, mcmc, path='out'):
     sys.stdout = orig_stdout
 
     
-def load_samples(place, path='out'):
-    
-    filename = f'{path}/{place}_samples.npz'
+def load_samples(filename):
+
     x = np.load(filename, allow_pickle=True)
     
     prior_samples = x['prior_samples'].item()
@@ -239,27 +237,29 @@ def load_samples(place, path='out'):
 def gen_forecasts(data, 
                   place, 
                   model_type=covid.models.SEIRD.SEIRD,
-                  model_abrv = "SEIRD",
                   start = '2020-03-04', 
                   end=None,
-                  load_path = 'out',
-                  save_path = 'vis',
                   save = True,
                   show = True, 
+                  prefix='.',
                   **kwargs):
     
+
+    # Deal with paths
+    load_path = Path(prefix) / 'out'
+    vis_path = Path(prefix) / 'vis'
+    vis_path.mkdir(parents=True, exist_ok=True)
     
     model = model_type()
-    
-    Path(model_abrv + "_" + save_path).mkdir(parents=True, exist_ok=True)
-    
+
     confirmed = data[place]['data'].confirmed[start:end]
     death = data[place]['data'].death[start:end]
 
     T = len(confirmed)
     N = data[place]['pop']
 
-    _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(place, path=model_abrv + "_" + load_path)
+    filename = path / f'{place}_samples.npz'   
+    _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(filename)
         
     for daily in [False, True]:
         for scale in ['log', 'lin']:
@@ -289,7 +289,7 @@ def gen_forecasts(data,
                 plt.tight_layout()
 
                 if save:
-                    filename = f'{model_abrv + "_" + save_path}/{place}_scale_{scale}_daily_{daily}_T_{T}.png'
+                    filename = vis_path / f'{place}_scale_{scale}_daily_{daily}_T_{T}.png'
                     plt.savefig(filename)
 
                 if show:
@@ -300,7 +300,7 @@ def gen_forecasts(data,
     plt.tight_layout()
     
     if save:
-        filename = f'{model_abrv + "_" + save_path}/{place}_R0.png'
+        filename = vis_path / f'{model_abrv + "_" + save_path}/{place}_R0.png'
         plt.savefig(filename)
 
     if show:
