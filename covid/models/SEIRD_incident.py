@@ -30,7 +30,7 @@ class SEIRD_incident(SEIRDBase):
                  gamma_shape = 8,
                  det_prob_est = 0.3,
                  det_prob_conc = 50,
-                 det_noise_scale = 0.5,
+                 det_noise_scale = 0.7,
                  rw_scale = 1e-1,
                  drift_scale = None,
                  confirmed = None,
