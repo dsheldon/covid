@@ -155,6 +155,9 @@ def run_place(data,
               prefix = "results",
               **kwargs):
 
+
+    print(f"Running {place} (start={start}, end={end})")
+    
     place_data = data[place]['data'][start:end]
     T = len(place_data)
 
@@ -303,7 +306,7 @@ def gen_forecasts(data,
     plt.tight_layout()
     
     if save:
-        filename = vis_path / f'{model_abrv + "_" + save_path}/{place}_R0.png'
+        filename = vis_path / f'{place}_R0.png'
         plt.savefig(filename)
 
     if show:
