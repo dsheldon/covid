@@ -286,9 +286,9 @@ class SEIRDBase(Model):
             
         return onp.diff(mean_z, axis=1, prepend=first)        
     
-    def dz(self, noise_scale=0.4, **args):
+    def dz(self, samples, noise_scale=0.4, **args):
         '''Daily deaths with observation noise'''
-        dz_mean = self.dz_mean(**args)
+        dz_mean = self.dz_mean(samples, **args)
         dz = dist.Normal(dz_mean, noise_scale * dz_mean).sample(PRNGKey(10))
         return dz
         
@@ -302,8 +302,8 @@ class SEIRDBase(Model):
             
         return onp.diff(mean_y, axis=1, prepend=first)
     
-    def dy(self, noise_scale=0.4, **args):
+    def dy(self, samples, noise_scale=0.4, **args):
         '''Daily confirmed cases with observation noise'''
-        dy_mean = self.dy_mean(**args)
+        dy_mean = self.dy_mean(samples, **args)
         dy = dist.Normal(dy_mean, noise_scale * dy_mean).sample(PRNGKey(11))
         return dy
