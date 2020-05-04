@@ -1,29 +1,43 @@
+import configs
 import covid.util as util
 import covid.models.SEIRD_variable_detection
 import numpy as np
+import pandas as pd
+
+
 data = util.load_data()
+
+config_names = ['SEIRD', 'SEIRD_variable_detection']
+forecast_dates = ["2020-04-04", "2020-04-11",  "2020-04-18", "2020-04-25"]
+
 places = ['KS', 'SC', 'IL', 'WI', 'LA', 'NE', 'FL', 'DE', 'ID', 'RI', 'CA', 'SD', 'MA', 'AK', 'MT', 'MD', 'KY', 'NH', 'NJ', 'AZ', 'GA', 'MO', 'NV', 'WA', 'CO', 'NC', 'TX', 'AL', 'DC', 'CT', 'OK', 'MS', 'TN', 'WY', 'IN', 'UT', 'VA', 'MN', 'ND', 'ME', 'OH', 'HI', 'NY', 'VT', 'AR', 'PA', 'IA', 'WV', 'NM', 'OR', 'MI']
-start_eval = '2020-04-27'
 
-average_m1 = []
-average_m2 = []
-for place in places:
-     print (place)
-     _,m1_mae = util.score_forecats(start=start_eval,place=place,data=data)
+eval_date = '2020-05-02'
 
-     print (m1_mae)
-     average_m1.append(m1_mae)
-     err_plotm2,m2_mae = util.score_forecats(start=start_eval,place=place,data=data,
-                            model_abrv="SEIRD_variable_detection",
-                             model=covid.models.SEIRD_variable_detection.SEIRD())
+print(f"model,forecast_date,place,err")
 
-     print (m2_mae)
-     average_m2.append(m2_mae)
-     print ("-----")
+for config_name in config_names:
+     for forecast_date in forecast_dates:
 
+          forecast_start = pd.to_datetime(forecast_date) + pd.Timedelta("1d")
+          prefix = f"results/{config_name}/{forecast_date}"
 
-average_m1 = np.array(average_m1)
-average_m2 = np.array(average_m2)
+          config = getattr(configs, config_name)          
+          errs = []
+          
+          for place in places:
+               
+               err = util.score_forecasts(start=forecast_start,
+                                          place=place,
+                                          data=data,
+                                          model_type=config['model'],
+                                          eval_date=eval_date,
+                                          prefix=prefix)
+               
+               print(f"{config_name},{forecast_date},{place},{err:.2f}")
 
-print (np.mean(average_m1))
-print (np.mean(average_m2))
+               errs.append(err)
+          
+          mae = np.mean(np.abs(np.array(errs)))
+          print(f"{config_name},{forecast_date},MAE,{mae:.2f}")
+          

@@ -1,22 +1,7 @@
 import sys
 import argparse
 import covid.util as util
-
-import covid.models.SEIRD
-
-configs = {}
-
-configs['test'] =  {
-    'model' : covid.models.SEIRD.SEIRD,
-    'args'  : {'num_samples' : 10,
-               'num_warmup': 10}
-}
-
-configs['SEIRD'] = {
-    'model' : covid.models.SEIRD.SEIRD,
-    'args'  : {}
-}
-
+import configs
 
 if __name__ == "__main__":
 
@@ -29,21 +14,21 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
 
-    if args.config not in configs:
-        print(f'Invalid config: {args.config}. Options are {list(configs.keys())}')
+    if args.config not in dir(configs):
+        print(f'Invalid config: {args.config}. Options are {dir(configs)}')
         exit()
 
-    config = configs[args.config]
+    config = getattr(configs, args.config)
         
     data = util.load_data()
     
-    # util.run_place(data,
-    #                args.place,
-    #                start=args.start,
-    #                end=args.end,
-    #                prefix=args.prefix,
-    #                model_type=config['model'],
-    #                **config['args'])
+    util.run_place(data,
+                   args.place,
+                   start=args.start,
+                   end=args.end,
+                   prefix=args.prefix,
+                   model_type=config['model'],
+                   **config['args'])
     
     util.gen_forecasts(data,
                        args.place,

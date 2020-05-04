@@ -1,8 +1,8 @@
 #!/bin/bash
 
-DIR=${1:-vis}
+DIR=${1:-results}
 echo $DIR
 
-cp ../vis/index.html $DIR/
+find $DIR -name "vis" -exec cp ../vis/index.html {} \;
 
-rsync -avz $DIR/ doppler:/var/www/html/covid/$DIR/
+rsync -avz --exclude="*samples*" $DIR/ doppler:/var/www/html/covid/$DIR/
