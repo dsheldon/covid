@@ -11,6 +11,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
+'''Utility to define access method for time varying fields'''
+def getter(f):
+    def get(self, samples, forecast=False):
+        return samples[f + '_future'] if forecast else self.combine_samples(samples, f)
+    return get
+
+
 """
 ************************************************************
 Base class for models
@@ -141,18 +148,18 @@ class Model():
         y = self.y(samples, **kwargs)
         return y.shape[1]
         
-    
-    '''Define access methods for time varying fields using a factory function'''
-    def getter(f):
-        def get(self, samples, forecast=False):
-            return samples[f + '_future'] if forecast else self.combine_samples(samples, f)
-        return get
-    
+        
     '''These are methods e.g., call self.z(samples) to get z'''
     z = getter('z')
     y = getter('y')
     mean_y = getter('mean_y')
     mean_z = getter('mean_z')
+
+    # There are only available in some models but easier to define here
+    dz = getter('dz')
+    dy = getter('dy')
+    mean_dy = getter('mean_dy')
+    mean_dz = getter('mean_dz')
     
     
     def plot_samples(self,
@@ -213,7 +220,7 @@ class Model():
                 
         # Plot forecast
         T = self.horizon(post_pred_samples)
-        obs_end = pd.to_datetime(start) + pd.Timedelta(T, "d")
+        obs_end = pd.to_datetime(start) + pd.Timedelta(T-1, "d")
         forecast_start = obs_end + pd.Timedelta("1d")
         
         median_max, pi_max = self.plot_samples(forecast_samples,
@@ -225,7 +232,8 @@ class Model():
                                                plot_fields=[variable])
         
         # Plot observation
-        obs[start:].plot(ax=ax, style='o')
+        forecast_end = forecast_start + pd.Timedelta(T_future-1, "d")
+        obs[start:forecast_end].plot(ax=ax, style='o')
         
         # Plot vertical line at end of observed data
         ax.axvline(obs_end, linestyle='--', alpha=0.5)
@@ -268,26 +276,34 @@ class SEIRDBase(Model):
            }
     
     
-    def dz(self, samples, **args):
-        '''Daily deaths'''
+    def dz_mean(self, samples, **args):
+        '''Daily deaths mean'''
         mean_z = self.mean_z(samples, **args)
         if args.get('forecast'):
             first = self.mean_z(samples, forecast=False)[:,-1,None]
         else:
             first = np.nan
             
-        dz_mean = onp.diff(mean_z, axis=1, prepend=first)        
-        dz = dist.Normal(dz_mean, 0.3 * dz_mean).sample(PRNGKey(1))
+        return onp.diff(mean_z, axis=1, prepend=first)        
+    
+    def dz(self, noise_scale=0.4, **args):
+        '''Daily deaths with observation noise'''
+        dz_mean = self.dz_mean(**args)
+        dz = dist.Normal(dz_mean, noise_scale * dz_mean).sample(PRNGKey(10))
         return dz
         
-    def dy(self, samples, **args):
-        '''Daily confirmed cases'''
+    def dy_mean(self, samples, **args):
+        '''Daily confirmed cases mean'''
         mean_y = self.mean_y(samples, **args)
         if args.get('forecast'):
             first = self.mean_y(samples, forecast=False)[:,-1,None]
         else:
             first = np.nan
             
-        dy_mean = onp.diff(mean_y, axis=1, prepend=first)
-        dy = dist.Normal(dy_mean, 0.3 * dy_mean).sample(PRNGKey(1))
+        return onp.diff(mean_y, axis=1, prepend=first)
+    
+    def dy(self, noise_scale=0.4, **args):
+        '''Daily confirmed cases with observation noise'''
+        dy_mean = self.dy_mean(**args)
+        dy = dist.Normal(dy_mean, noise_scale * dy_mean).sample(PRNGKey(11))
         return dy

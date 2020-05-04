@@ -163,6 +163,7 @@ def run_place(data,
         data = place_data,
         T = T,
         N = data[place]['pop'],
+        **kwargs
     )
     
     print(" * running MCMC")
@@ -238,7 +239,7 @@ def load_samples(place, path='out'):
 def gen_forecasts(data, 
                   place, 
                   model_type=covid.models.SEIRD.SEIRD,
-                  model_abrv = "SERID",
+                  model_abrv = "SEIRD",
                   start = '2020-03-04', 
                   end=None,
                   load_path = 'out',
@@ -262,7 +263,7 @@ def gen_forecasts(data,
         
     for daily in [False, True]:
         for scale in ['log', 'lin']:
-            for T in [28, 42]:
+            for T in [14, 28]:
 
                 fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
 
