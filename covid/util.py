@@ -152,7 +152,7 @@ def run_place(data,
               num_chains = 1,
               num_prior_samples = 0,              
               T_future=4*7,
-              prefix = "default",
+              prefix = "results",
               **kwargs):
 
     place_data = data[place]['data'][start:end]
@@ -186,17 +186,20 @@ def run_place(data,
     if save:
 
         # Save samples
-        path = Path(prefix) / 'out'
+        path = Path(prefix) / 'samples'
         path.mkdir(parents=True, exist_ok=True)
-
-        filename = path / f'{place}_samples.npz'
+        filename = path / f'{place}.npz'
+        
         save_samples(filename,
                      prior_samples,
                      mcmc_samples, 
                      post_pred_samples,
                      forecast_samples)
         
-        filename = path / f'{place}_summary.txt'
+        path = Path(prefix) / 'summary'
+        path.mkdir(parents=True, exist_ok=True)
+        filename = path / f'{place}.txt'
+        
         write_summary(filename, model.mcmc)
 
         
@@ -241,12 +244,12 @@ def gen_forecasts(data,
                   end=None,
                   save = True,
                   show = True, 
-                  prefix='.',
+                  prefix='results',
                   **kwargs):
     
 
     # Deal with paths
-    load_path = Path(prefix) / 'out'
+    samples_path = Path(prefix) / 'samples'
     vis_path = Path(prefix) / 'vis'
     vis_path.mkdir(parents=True, exist_ok=True)
     
@@ -258,7 +261,7 @@ def gen_forecasts(data,
     T = len(confirmed)
     N = data[place]['pop']
 
-    filename = path / f'{place}_samples.npz'   
+    filename = samples_path / f'{place}.npz'   
     _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(filename)
         
     for daily in [False, True]:
