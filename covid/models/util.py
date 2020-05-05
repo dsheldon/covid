@@ -89,7 +89,7 @@ def observe(*args, **kwargs):
 def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     mask = True
 
-    reg = 0.5
+    reg = 0.
     latent = latent + (reg/det_rate)
     
     if obs is not None:
