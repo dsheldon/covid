@@ -4,16 +4,12 @@ from . import jhu
 from . import covidtracking
 from . import states
 
-#from covid.models.SEIRD import SEIRD_stochastic
-
-from covid.models.SEIRD import SEIRD_stochastic
+import covid.models.SEIRD
 
 import pandas as pd
 import matplotlib.pyplot as plt
 
 import numpy as onp
-
-import datapackage
 
 import jax
 import jax.numpy as np
@@ -24,6 +20,7 @@ from numpyro.infer import MCMC, NUTS, Predictive
 
 from pathlib import Path
 
+import cachetools
 
 
 """
@@ -32,6 +29,7 @@ Data
 ************************************************************
 """
 
+@cachetools.func.ttl_cache(ttl=600)
 def load_world_data():
     # world data
     world = jhu.load_world()
@@ -40,7 +38,7 @@ def load_world_data():
     country_names = world.columns.unique(level=0)
     world_pop_data = pd.read_csv('https://s3.amazonaws.com/rawstore.datahub.io/630580e802a621887384f99527b68f59.csv')
     world_pop_data = world_pop_data.set_index("Country")
-     
+        
     country_names_valid = set(country_names) & set(world_pop_data.index) 
     world_data = {
         k: {'data' : world[k].tot, 
@@ -76,37 +74,10 @@ def load_state_data(source="jhu"):
     return state_data
 
 
-def load_data():
-
-    # world data
-    world = jhu.load_world()
-    world = world.loc[:,(slice(None), 'tot', slice(None))] # only country totals
-    country_names = world.columns.unique(level=0)
-    
-    # Need country populations!
-    pop = {
-        'Italy': 60.48e6,
-        'US': 3.27e8,
-    }
-
-    data = {country: world[country].tot for country in country_names}
-
-    place_names = {country: country for country in country_names}
-    place_names['US'] = 'United States'
-    place_names = dict(place_names, **states.states)
-    
-    # US state data
-    US = covidtracking.load_us()
-    traits = states.uga_traits()
-
-    state_pop = { k: traits.totalpop[k] for k in traits.index }
-    state_data = { k: US[k] for k in US.columns.unique(level=0) }
-
-    # combine them
-    data = dict(data, **state_data)
-    pop = dict(pop, **state_pop)
-    
-    return data, pop, place_names, state_pop
+def load_data(us_source="jhu"):
+    state_data = load_state_data(source=us_source)
+    world_data = load_world_data()
+    return dict(world_data, **state_data)
 
 
 def load_state_Xy(which=None):
@@ -140,142 +111,7 @@ def load_state_Xy(which=None):
 Plotting
 ************************************************************
 """
-
-def combine_samples(samples, fields=['x', 'y', 'z', 'mean_y', 'mean_z']):
-    '''Combine x0, x, x_future and similar fields into a single array'''
-
-    samples = samples.copy()
     
-    for f in fields:
-        if f in samples:
-            f0, f_future = f + '0', f + '_future'
-            data = np.concatenate((samples[f0][:,None], samples[f]), axis=1)
-            del samples[f0]
-            
-            if f_future in samples:
-                data = np.concatenate((data, samples[f_future]), axis=1)
-                del samples[f_future]
-            
-            samples[f] = data
-    
-    return samples
-
-
-def plot_samples(samples, 
-                 plot_fields=['I', 'y'], 
-                 T=None, 
-                 t=None, 
-                 ax=None, 
-                 n_samples=0,
-                 legend=True,
-                 model='SEIR'):
-    '''
-    Plotting method for SIR-type models. 
-    (Needs some refactoring to handle both SIR and SEIR)
-    '''
-
-    samples = combine_samples(samples)
-    n_samples = np.minimum(n_samples, samples['x'].shape[0])
-    
-    T_data = samples['x'].shape[1]
-    if T is None or T > T_data:
-        T = T_data
-    
-    if model == 'SIR':
-        S, I, R, C = 0, 1, 2, 3
-    elif model == 'SEIR':
-        S, E, I, R, H, D, C = 0, 1, 2, 3, 4, 5, 6
-    else:
-        raise ValueError("Bad model")
-    
-    fields = {'susceptible'     : samples['x'][:,:T, S],
-              'infectious'      : samples['x'][:,:T, I],
-              'removed'         : samples['x'][:,:T, R],
-              'total infectious': samples['x'][:,:T, C],
-              'total confirmed' : samples['y'][:,:T],
-              'total deaths'    : samples['z'][:,:T],
-              'daily confirmed' : onp.diff(samples['mean_y'][:,:T], axis=1, prepend=np.nan),
-              'daily deaths'    : onp.diff(samples['mean_z'][:,:T], axis=1, prepend=np.nan)}
-                  
-    fields = {k: fields[k] for k in plot_fields}
-
-    medians = {k: np.median(v, axis=0) for k, v in fields.items()}    
-    pred_intervals = {k: np.percentile(v, (10, 90), axis=0) for k, v in fields.items()}
-    
-    t = np.arange(T) if t is None else t[:T]
-    
-    ax = ax if ax is not None else plt.gca()
-    
-    df = pd.DataFrame(index=t, data=medians)
-    df.plot(ax=ax, legend=legend)
-    median_max = df.max().values
-    
-    colors = [l.get_color() for l in ax.get_lines()]
-    
-    # Add individual field lines
-    if n_samples > 0:
-        i = 0
-        for k, data in fields.items():
-            step = np.array(data.shape[0]/n_samples).astype('int32')
-            df = pd.DataFrame(index=t, data=data[::step,:].T)
-            df.plot(ax=ax, lw=0.25, color=colors[i], alpha=0.25, legend=False)
-            i += 1
-    
-    # Add prediction intervals
-    pi_max = 10
-    i = 0
-    for k, pred_interval in pred_intervals.items():
-        ax.fill_between(t, pred_interval[0,:], pred_interval[1,:], color=colors[i], alpha=0.1, label='CI')
-        pi_max = np.maximum(pi_max, np.nanmax(pred_interval[1,:]))
-        i+= 1
-    
-    return median_max, pi_max
-    
-    
-def plot_forecast(post_pred_samples, T, confirmed, 
-                  t = None, 
-                  scale='log',
-                  n_samples= 100,
-                  death = None,
-                  daily = False,
-                  **kwargs):
-
-    t = t if t is not None else np.arange(T)
-
-    fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)
-    
-    
-    if daily:
-        variables = ['daily confirmed', 'daily deaths']
-        w = 7
-        min_periods = 1
-        observations = [confirmed.diff().rolling(w, min_periods=min_periods, center=True).mean(), 
-                        death.diff().rolling(w, min_periods=min_periods, center=True).mean()]
-    else:
-        variables = ['total confirmed', 'total deaths']
-        observations = [confirmed, death]
-        
-    for variable, observation, ax in zip(variables, observations, axes):
-    
-        median_max, pi_max = plot_samples(post_pred_samples, T=T, t=t, ax=ax, plot_fields=[variable], **kwargs)
-        observation.plot(ax=ax, style='o')
-    
-        ax.axvline(observation.index.max(), linestyle='--', alpha=0.5)
-        ax.grid(axis='y')
-
-        if scale == 'log':
-            ax.set_yscale('log')
-
-            # Don't display below 1
-            bottom, top = ax.get_ylim()
-            bottom = 1 if bottom < 1 else bottom
-            ax.set_ylim([bottom, pi_max])
-        else:
-            top = np.minimum(2*median_max, pi_max)
-            ax.set_ylim([0, top])
-
-    return fig, ax
-
 def plot_R0(mcmc_samples, start):
 
     fig = plt.figure(figsize=(5,3))
@@ -307,101 +143,84 @@ Running
 
 def run_place(data, 
               place, 
+              model_type=covid.models.SEIRD.SEIRD,
               start = '2020-03-04',
               end = None,
-              confirmed_min = 10,
-              confirmed_ignore_last = 0,
-              death_min = 5,
               save = True,
               num_warmup = 1000,
               num_samples = 1000,
               num_chains = 1,
-              num_prior_samples = 1000,
-              T_future=26*7,
-              save_path = 'out',
+              num_prior_samples = 0,              
+              T_future=4*7,
+              prefix = "results",
               **kwargs):
 
-    prob_model = SEIRD_stochastic
+
+    print(f"Running {place} (start={start}, end={end})")
     
-    print(f"******* {place} *********")
-    confirmed = data[place]['data'].confirmed[start:]
-    death = data[place]['data'].death[start:]
+    place_data = data[place]['data'][start:end]
+    T = len(place_data)
 
-    # ignore last few confirmed cases reports
-    window_start = confirmed.index.max() - pd.Timedelta(confirmed_ignore_last - 1, "d")
-    confirmed[window_start:] = np.nan
+    model = model_type(
+        data = place_data,
+        T = T,
+        N = data[place]['pop'],
+        **kwargs
+    )
     
-    start = confirmed.index.min()
+    print(" * running MCMC")
+    mcmc_samples = model.infer(num_warmup=num_warmup, 
+                               num_samples=num_samples)
 
-    confirmed[confirmed < confirmed_min] = np.nan
-    death[death < death_min] = np.nan
-    
-    T = len(confirmed)
-    N = data[place]['pop']
+    # Prior samples
+    prior_samples = None
+    if num_prior_samples > 0:
+        print(" * collecting prior samples")
+        prior_samples = model.prior(num_samples=num_prior_samples)
 
-    args = {
-        'N': N,
-        'T': T,
-        'rw_scale': 2e-1
-    }
+    # In-sample posterior predictive samples (don't condition on observations)
+    print(" * collecting predictive samples")
+    post_pred_samples = model.predictive()
 
-    args = dict(args, **kwargs)
-    
-    kernel = NUTS(prob_model,
-                  init_strategy = numpyro.infer.util.init_to_median())
-
-    mcmc = MCMC(kernel, 
-                num_warmup=num_warmup, 
-                num_samples=num_samples, 
-                num_chains=num_chains)
-
-    print("Running MCMC")
-    mcmc.run(jax.random.PRNGKey(2),
-             obs = confirmed.values,
-             death = death.values,
-             **args)
-
-    mcmc.print_summary()
-    mcmc_samples = mcmc.get_samples()
-    
-    # Prior samples for comparison
-    prior = Predictive(prob_model, posterior_samples = {}, num_samples = num_prior_samples)
-    prior_samples = prior(PRNGKey(2), **args)
-
-    # Posterior predictive samples for visualization
-    args['rw_scale'] = 0 # disable random walk for forecasting
-    post_pred = Predictive(prob_model, posterior_samples = mcmc_samples)
-    post_pred_samples = post_pred(PRNGKey(2), T_future=T_future, **args)
-
+    # Forecasting posterior predictive (do condition on observations)
+    print(" * collecting forecast samples")
+    forecast_samples = model.forecast(T_future=T_future)
+        
     if save:
-        save_samples(place,
+
+        # Save samples
+        path = Path(prefix) / 'samples'
+        path.mkdir(parents=True, exist_ok=True)
+        filename = path / f'{place}.npz'
+        
+        save_samples(filename,
                      prior_samples,
                      mcmc_samples, 
                      post_pred_samples,
-                     path=save_path)
+                     forecast_samples)
         
-        write_summary(place, mcmc, path=save_path)
+        path = Path(prefix) / 'summary'
+        path.mkdir(parents=True, exist_ok=True)
+        filename = path / f'{place}.txt'
+        
+        write_summary(filename, model.mcmc)
 
         
-def save_samples(place, 
+def save_samples(filename, 
                  prior_samples,
                  mcmc_samples, 
                  post_pred_samples,
-                 path='out'):
+                 forecast_samples):
     
-    # Save samples
-    Path(path).mkdir(parents=True, exist_ok=True)
-    filename = f'{path}/{place}_samples.npz'
     np.savez(filename, 
              prior_samples = prior_samples,
              mcmc_samples = mcmc_samples, 
-             post_pred_samples = post_pred_samples)
+             post_pred_samples = post_pred_samples,
+             forecast_samples = forecast_samples)
 
 
-def write_summary(place, mcmc, path='out'):
+def write_summary(filename, mcmc):
     # Write diagnostics to file
-    Path(path).mkdir(parents=True, exist_ok=True)
-    filename = f'out/{place}_summary.txt'
     orig_stdout = sys.stdout
     with open(filename, 'w') as f:
         sys.stdout = f
@@ -409,72 +228,135 @@ def write_summary(place, mcmc, path='out'):
     sys.stdout = orig_stdout
 
     
-def load_samples(place, path='out'):
-    
-    filename = f'{path}/{place}_samples.npz'
+def load_samples(filename):
+
     x = np.load(filename, allow_pickle=True)
     
     prior_samples = x['prior_samples'].item()
     mcmc_samples = x['mcmc_samples'].item()
     post_pred_samples = x['post_pred_samples'].item()
+    forecast_samples = x['forecast_samples'].item()
     
-    return prior_samples, mcmc_samples, post_pred_samples
+    return prior_samples, mcmc_samples, post_pred_samples, forecast_samples
 
 
 def gen_forecasts(data, 
                   place, 
+                  model_type=covid.models.SEIRD.SEIRD,
                   start = '2020-03-04', 
-                  load_path = 'out',
-                  save_path = 'vis',
+                  end=None,
                   save = True,
                   show = True, 
+                  prefix='results',
                   **kwargs):
     
-    Path(save_path).mkdir(parents=True, exist_ok=True)
+
+    # Deal with paths
+    samples_path = Path(prefix) / 'samples'
+    vis_path = Path(prefix) / 'vis'
+    vis_path.mkdir(parents=True, exist_ok=True)
     
-    confirmed = data[place]['data'].confirmed[start:]
-    death = data[place]['data'].death[start:]
-    start_ = confirmed.index.min()
+    model = model_type()
+
+    confirmed = data[place]['data'].confirmed[start:end]
+    death = data[place]['data'].death[start:end]
 
     T = len(confirmed)
     N = data[place]['pop']
 
-    prior_samples, mcmc_samples, post_pred_samples = load_samples(place, path=load_path)
-    
-    for scale in ['log', 'lin']:
-        for T in [65, 100, 150]:
+    filename = samples_path / f'{place}.npz'   
+    _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(filename)
+        
+    for daily in [False, True]:
+        for scale in ['log', 'lin']:
+            for T in [14, 28]:
 
-            t = pd.date_range(start=start_, periods=T, freq='D')
+                fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
 
-            fig, ax = plot_forecast(post_pred_samples, T, confirmed, 
-                                    t = t, 
-                                    scale = scale, 
-                                    death = death,
-                                    **kwargs)
+                if daily:
+                    variables = ['dy', 'dz']
+                    observations = [confirmed.diff(), death.diff()]
+                else:
+                    variables = ['y', 'z']
+                    observations= [confirmed, death]
+
+                for variable, obs, ax in zip(variables, observations, axes):
+                    model.plot_forecast(variable,
+                                        post_pred_samples,
+                                        forecast_samples,
+                                        start,
+                                        T_future=T,
+                                        obs=obs,
+                                        ax=ax,
+                                        scale=scale)
+
+                name = data[place]['name']
+                plt.suptitle(f'{name} {T} days ')
+                plt.tight_layout()
+
+                if save:
+                    filename = vis_path / f'{place}_scale_{scale}_daily_{daily}_T_{T}.png'
+                    plt.savefig(filename)
+
+                if show:
+                    plt.show()
             
-            name = data[place]['name']
-            plt.suptitle(f'{name} {T} days ')
-            plt.tight_layout()
-
-            if save:
-                filename = f'{save_path}/{place}_predictive_scale_{scale}_T_{T}.png'
-                plt.savefig(filename)
-                
-            if show:
-                plt.show()
-            
-    fig = plot_R0(mcmc_samples, start_)    
+    fig = plot_R0(mcmc_samples, start)    
     plt.title(place)
     plt.tight_layout()
     
     if save:
-        filename = f'{save_path}/{place}_R0.png'
+        filename = vis_path / f'{place}_R0.png'
         plt.savefig(filename)
 
     if show:
-        plt.show()        
-
-
-def get_world_pop_data():
-     return (dict(zip(names, population)))
+        plt.show()   
         
+        
+        
+def score_forecasts(start,
+                    place,
+                    data,
+                    prefix="results",
+                    model_type=covid.models.SEIRD.SEIRD,
+                    eval_date=None,
+                    method="mae"):
+
+    model = model_type()
+    
+    filename = Path(prefix) / 'samples' / f'{place}.npz'
+    prior_samples, mcmc_samples, post_pred_samples, forecast_samples = \
+        load_samples(filename)
+
+    # cumulative deaths 
+    death = data[place]['data'][start:eval_date].death
+    end = death.index.max()
+
+    obs = death[start:]
+
+    T = len(obs)
+    z = model.get(forecast_samples, 'z', forecast=True)[:,:T]
+    df = pd.DataFrame(index=obs.index, data=z.T)
+ 
+
+    if method == "ls":
+         
+          ls = []
+
+          for index, row in df.iterrows():
+               ls.append(sum((round(df.loc[index,:]) < (round(obs.loc[index]) + 100) )&
+          (round(df.loc[index,:]) > (round(obs.loc[index]) - 100))))
+
+          err = np.mean(np.clip(np.log(np.array(ls)),-10))
+          #err_plot = err.plot(style='0')     
+    else:
+         point_forecast = df.median(axis=1)
+         
+         errs = (obs-point_forecast).rename('errs')
+
+         err = errs[eval_date] if eval_date is not None else errs.values[-1]
+
+         #err_plot = err.plot(style='o')
+         #err = err.abs().mean()
+
+    return err

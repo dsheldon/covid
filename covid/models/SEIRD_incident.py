@@ -1,13 +1,12 @@
 import jax
 import jax.numpy as np
-from jax.random import PRNGKey
 
 import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
 from .util import observe, ExponentialRandomWalk
-from .base import SEIRDBase
+from .base import SEIRDBase, getter
 
 import numpy as onp
 
@@ -17,8 +16,8 @@ SEIRD model
 ************************************************************
 """
 
-class SEIRD(SEIRDBase):    
-    
+class SEIRD_incident(SEIRDBase):
+
     def __call__(self,
                  T = 50,
                  N = 1e5,
@@ -31,22 +30,21 @@ class SEIRD(SEIRDBase):
                  gamma_shape = 8,
                  det_prob_est = 0.3,
                  det_prob_conc = 50,
-                 det_noise_scale = 0.15,
-                 rw_scale = 2e-1,
-                 forecast_rw_scale = 0,
+                 det_noise_scale = 0.7,
+                 rw_scale = 1e-1,
                  drift_scale = None,
-                 confirmed=None,
+                 confirmed = None,
                  death=None):
 
         '''
         Stochastic SEIR model. Draws random parameters and runs dynamics.
-        '''        
-                
+        '''
+
         # Sample initial number of infected individuals
         I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
         E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
         H0 = numpyro.sample("H0", dist.Uniform(0, 0.02*N))
-        D0 = numpyro.sample("D0", dist.Uniform(0, 100))
+        D0 = numpyro.sample("D0", dist.Uniform(0, 1000))
 
         # Sample parameters
         sigma = numpyro.sample("sigma", 
@@ -86,23 +84,26 @@ class SEIRD(SEIRDBase):
         numpyro.deterministic("x0", x0)
 
         # Split observations into first and rest
-        confirmed0, confirmed = (None, None) if confirmed is None else (confirmed[0], confirmed[1:])
-        death0, death = (None, None) if death is None else (death[0], death[1:])
+        confirmed0, confirmed = (None, None) if confirmed is None else (confirmed[0], np.diff(confirmed))
+        death0, death = (None, None) if death is None else (death[0], np.diff(death))
 
 
         # First observation
         with numpyro.handlers.scale(scale_factor=0.5):
-            y0 = observe("y0", x0[6], det_prob, det_noise_scale, obs=confirmed0)
-            
+            y0 = observe("dy0", x0[6], det_prob, det_noise_scale, obs=confirmed0)
+
         with numpyro.handlers.scale(scale_factor=2.0):
-            z0 = observe("z0", x0[5], det_prob_d, det_noise_scale, obs=death0)
+            z0 = observe("dz0", x0[5], det_prob_d, det_noise_scale, obs=death0)
+
 
         params = (beta0, sigma, gamma, 
                   rw_scale, drift, 
                   det_prob, det_noise_scale, 
                   death_prob, death_rate, det_prob_d)
 
-        beta, x, y, z = self.dynamics(T, params, x0, confirmed=confirmed, death=death)
+        beta, x, y, z = self.dynamics(T, params, x0, 
+                                       confirmed = confirmed,
+                                       death = death)
 
         x = np.vstack((x0, x))
         y = np.append(y0, y)
@@ -111,7 +112,7 @@ class SEIRD(SEIRDBase):
         if T_future > 0:
 
             params = (beta[-1], sigma, gamma, 
-                      forecast_rw_scale, drift, 
+                      rw_scale, drift, 
                       det_prob, det_noise_scale, 
                       death_prob, death_rate, det_prob_d)
 
@@ -136,16 +137,51 @@ class SEIRD(SEIRDBase):
 
         # Run ODE
         x = SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
-        x = x[1:] # first entry duplicates x0
-        numpyro.deterministic("x" + suffix, x)
 
+        numpyro.deterministic("x" + suffix, x[1:])
+
+        x_diff = np.diff(x, axis=0)
 
         # Noisy observations
         with numpyro.handlers.scale(scale_factor=0.5):
-            y = observe("y" + suffix, x[:,6], det_prob, det_noise_scale, obs = confirmed)
+            y = observe("dy" + suffix, x_diff[:,6], det_prob, det_noise_scale, obs = confirmed)   
 
         with numpyro.handlers.scale(scale_factor=2.0):
-            z = observe("z" + suffix, x[:,5], det_prob_d, det_noise_scale, obs = death)
+            z = observe("dz" + suffix, x_diff[:,5], det_prob_d, det_noise_scale, obs = death)  
 
         return beta, x, y, z
+
+
+    dy = getter('dy')
+    dz = getter('dz')
+    
+    def y0(self, **args):
+        return self.z0(**args)
+
+    
+    def y(self, samples, **args):
+        '''Get cumulative cases from incident ones'''
         
+        dy = self.dy(samples, **args)
+        
+        y0 = np.zeros(dy.shape[0])
+        if args.get('forecast'):
+            y0 = self.y(samples, forecast=False)[:,-1]
+ 
+        return y0[:,None] + onp.cumsum(dy, axis=1)
+
+
+    def z0(self, **args):
+        return self.z0(**args)
+
+    
+    def z(self, samples, **args):
+        '''Get cumulative deaths from incident ones'''
+        
+        dz = self.dz(samples, **args)
+        
+        z0 = np.zeros(dz.shape[0])
+        if args.get('forecast'):
+            z0 = self.z(samples, forecast=False)[:,-1]
+ 
+        return z0[:,None] + onp.cumsum(dz, axis=1)

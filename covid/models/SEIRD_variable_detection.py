@@ -6,7 +6,7 @@ import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
-from .util import observe, ExponentialRandomWalk
+from .util import observe, ExponentialRandomWalk, LogisticRandomWalk
 from .base import SEIRDBase
 
 import numpy as onp
@@ -46,7 +46,7 @@ class SEIRD(SEIRDBase):
         I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
         E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
         H0 = numpyro.sample("H0", dist.Uniform(0, 0.02*N))
-        D0 = numpyro.sample("D0", dist.Uniform(0, 100))
+        D0 = numpyro.sample("D0", dist.Uniform(0, 0.02*N))
 
         # Sample parameters
         sigma = numpyro.sample("sigma", 
@@ -55,8 +55,6 @@ class SEIRD(SEIRDBase):
         gamma = numpyro.sample("gamma", 
                                 dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
 
-    #     gamma = numpyro.sample("gamma", 
-    #                            dist.TruncatedNormal(loc = 1./I_duration_est, scale = 0.25)
 
         beta0 = numpyro.sample("beta0", 
                                dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
@@ -70,8 +68,8 @@ class SEIRD(SEIRDBase):
                                               (1-.9) * 100))
 
         death_prob = numpyro.sample("death_prob", 
-                                    dist.Beta(.1 * 100,
-                                              (1-.1) * 100))
+                                    dist.Beta(.01 * 100,
+                                              (1-.01) * 100))
 
         death_rate = numpyro.sample("death_rate", 
                                     dist.Gamma(10, 10 * 10))
@@ -93,16 +91,18 @@ class SEIRD(SEIRDBase):
         # First observation
         with numpyro.handlers.scale(scale_factor=0.5):
             y0 = observe("y0", x0[6], det_prob, det_noise_scale, obs=confirmed0)
-            
-        with numpyro.handlers.scale(scale_factor=2.0):
-            z0 = observe("z0", x0[5], det_prob_d, det_noise_scale, obs=death0)
+        z0 = observe("z0", x0[5], det_prob_d, det_noise_scale, obs=death0)
+
 
         params = (beta0, sigma, gamma, 
                   rw_scale, drift, 
                   det_prob, det_noise_scale, 
-                  death_prob, death_rate, det_prob_d)
+                  death_prob, death_rate, det_prob_d,None)
 
-        beta, x, y, z = self.dynamics(T, params, x0, confirmed=confirmed, death=death)
+        beta, det_prob_rw, x, y, z = self.dynamics(T, params, x0, 
+                                       confirmed = confirmed, 
+                                       death = death,
+                                      det_rate=det_prob_est)
 
         x = np.vstack((x0, x))
         y = np.append(y0, y)
@@ -111,28 +111,34 @@ class SEIRD(SEIRDBase):
         if T_future > 0:
 
             params = (beta[-1], sigma, gamma, 
-                      forecast_rw_scale, drift, 
-                      det_prob, det_noise_scale, 
-                      death_prob, death_rate, det_prob_d)
+                      rw_scale, drift, 
+                      det_prob_rw[-1], det_noise_scale, 
+                     death_prob, death_rate, det_prob_d,det_prob_rw[-1])
 
-            beta_f, x_f, y_f, z_f = self.dynamics(T_future+1, params, x[-1,:], 
-                                                  suffix="_future")
+            beta_f, det_rate_rw_f, x_f, y_f, z_f = self.dynamics(T_future+1, params, x[-1,:], 
+                                                   suffix="_future",det_rate=det_prob_est)
 
             x = np.vstack((x, x_f))
             y = np.append(y, y_f)
             z = np.append(z, z_f)
 
         return beta, x, y, z, det_prob, death_prob
-
     
-    def dynamics(self, T, params, x0, confirmed=None, death=None, suffix=""):
+    def dynamics(self, T, params, x0, confirmed=None, death=None, det_rate=None, suffix=""):
         '''Run SEIRD dynamics for T time steps'''
 
         beta0, sigma, gamma, rw_scale, drift, \
-        det_prob, det_noise_scale, death_prob, death_rate, det_prob_d  = params
+        det_prob, det_noise_scale, death_prob, death_rate, det_prob_d,det_prob_future  = params
 
         beta = numpyro.sample("beta" + suffix,
                       ExponentialRandomWalk(loc=beta0, scale=rw_scale, drift=drift, num_steps=T-1))
+
+
+        if suffix != "_future":
+            det_prob_rw = numpyro.sample("det_rate_rw" + suffix,
+                      LogisticRandomWalk(loc=det_prob, scale=rw_scale, drift=0, num_steps=T-1))
+        else:
+            det_prob_rw = det_prob_future
 
         # Run ODE
         x = SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
@@ -142,10 +148,12 @@ class SEIRD(SEIRDBase):
 
         # Noisy observations
         with numpyro.handlers.scale(scale_factor=0.5):
-            y = observe("y" + suffix, x[:,6], det_prob, det_noise_scale, obs = confirmed)
+            y = observe("y" + suffix, x[:,6], det_prob_rw, det_noise_scale, obs = confirmed)
 
         with numpyro.handlers.scale(scale_factor=2.0):
             z = observe("z" + suffix, x[:,5], det_prob_d, det_noise_scale, obs = death)
 
-        return beta, x, y, z
+        return beta,det_prob_rw, x, y, z
+
+
         

@@ -23,7 +23,7 @@ def load_world():
 
     sources = {
     'confirmed' : 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
-    'deaths' : 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+    'death' : 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
 }
 
     # Load each data file into a dataframe with row index = date, and column index = (country, province)
@@ -35,8 +35,6 @@ def load_world():
     # Permute order of index to (country, province, variable) and sort the columns by the index value
     df = df.reorder_levels([1,2,0], axis=1).sort_index(axis=1)
 
-    return df
-    
     return df
         
 #@functools.lru_cache(128)
@@ -59,7 +57,7 @@ def load_us():
 
     confirmed['date'] = pd.to_datetime(confirmed['date'], infer_datetime_format=False) 
     deaths = loadData(
-    "time_series_covid19_deaths_US.csv", "deaths")
+    "time_series_covid19_deaths_US.csv", "death")
     deaths = deaths.drop(columns=['UID','Lat', 'Long_',
                                 "iso2","iso3","code3","FIPS",
                                 "Admin2", "Country_Region","Combined_Key","Population"])
