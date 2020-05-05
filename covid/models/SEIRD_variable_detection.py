@@ -136,7 +136,7 @@ class SEIRD(SEIRDBase):
 
         if suffix != "_future":
             det_prob_rw = numpyro.sample("det_rate_rw" + suffix,
-                      LogisticRandomWalk(loc=beta0, scale=rw_scale, drift=0, num_steps=T-1))
+                      LogisticRandomWalk(loc=det_prob, scale=rw_scale, drift=0, num_steps=T-1))
         else:
             det_prob_rw = det_prob_future
 
