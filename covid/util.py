@@ -345,8 +345,15 @@ def score_place(forecast_date,
     obs = data[place]['data'][start:].death
     end = obs.index.max()
 
-    T = len(obs)
-    z = model.get(forecast_samples, 'z', forecast=True)[:,:T]
+    # predicted deaths
+    z = model.get(forecast_samples, 'z', forecast=True)
+    
+    # truncate to smaller length
+    T = min(len(obs), z.shape[1])
+    z = z[:,:T]
+    obs = obs.iloc[:T]
+    
+    # create data frame for analysis
     samples = pd.DataFrame(index=obs.index, data=z.T)
 
     n_samples = samples.shape[1]
@@ -409,8 +416,8 @@ def score_forecast(forecast_date,
         
         summary.loc[date, 'horizon'] = horizon
 
-        # Compute bias
-        summary.loc[date, 'mean_signed_abs_err'] = rows['err'].mean()
+        # Compute signer error / bias
+        summary.loc[date, 'signed_err'] = rows['err'].mean()
         
         # Compute MAE
         summary.loc[date, 'MAE'] = rows['err'].abs().mean()
@@ -423,4 +430,6 @@ def score_forecast(forecast_date,
         summary.loc[date,'KS'] = ks
         summary.loc[date,'KS_pval'] = pval
         
+    summary['forecast_date'] = forecast_date
+    
     return summary, details

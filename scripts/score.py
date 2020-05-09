@@ -12,8 +12,8 @@ data = util.load_state_data()
 #forecast_dates = ["2020-04-04", "2020-04-11",  "2020-04-18", "2020-04-25"]
 
 config_names = ['strongest_prior']
-forecast_dates = ['2020-04-25', '2020-05-03']
-eval_date = '2020-05-06'
+forecast_dates = ['2020-04-11', '2020-04-18', '2020-04-25', '2020-05-03']
+eval_date = '2020-05-07'
 root='results'
 
 overall_summary = pd.DataFrame()
@@ -45,8 +45,18 @@ for config_name in config_names:
         details.to_csv(path / 'details.csv', float_format="%.4f")
         
         overall_summary = overall_summary.append(summary.loc[eval_date])
-        
 
+        
 filename = Path(root) / 'summary.csv'
-overall_summary.to_csv(filename, float_format="%.4f", index=False)
+
+# reorder columns for save
+overall_summary = overall_summary.reset_index(drop=True)
+overall_summary['eval_date'] = eval_date
+cols = list(overall_summary.columns)
+special_cols = ['model', 'forecast_date', 'eval_date', 'horizon']
+for c in special_cols:
+    print(c)
+    cols.remove(c)    
+cols = special_cols + cols
+overall_summary.to_csv(filename, float_format="%.4f", columns=cols, index=False)
 print(overall_summary)
