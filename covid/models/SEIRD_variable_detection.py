@@ -11,6 +11,17 @@ from .base import SEIRDBase
 
 import numpy as onp
 
+
+def frozen_random_walk(name, num_steps=100, num_frozen=10):
+
+    # last random value is repeated frozen-1 times
+    num_random = min(max(0, num_steps - num_frozen), num_steps)
+    num_frozen = num_steps - num_random
+
+    rw = numpyro.sample(name, dist.GaussianRandomWalk(num_steps=num_random))
+    rw = np.concatenate((rw, np.repeat(rw[-1], num_frozen)))    
+    return rw
+
 """
 ************************************************************
 SEIRD model
@@ -35,6 +46,7 @@ class SEIRD(SEIRDBase):
                  rw_scale = 2e-1,
                  forecast_rw_scale = 0,
                  drift_scale = None,
+                 num_frozen=0,
                  confirmed=None,
                  death=None):
 
@@ -56,7 +68,7 @@ class SEIRD(SEIRDBase):
                                 dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
 
 
-        beta0 = numpyro.sample("beta0", 
+        beta0 = numpyro.sample("beta0",
                                dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
 
         det_prob0 = numpyro.sample("det_prob0", 
@@ -109,6 +121,7 @@ class SEIRD(SEIRDBase):
         beta, det_prob, x, y, z = self.dynamics(T, 
                                                 params, 
                                                 x0,
+                                                num_frozen = num_frozen,
                                                 confirmed = confirmed,
                                                 death = death)
 
@@ -131,7 +144,7 @@ class SEIRD(SEIRDBase):
 
             beta_f, det_rate_rw_f, x_f, y_f, z_f = self.dynamics(T_future+1, 
                                                                  params, 
-                                                                 x[-1,:], 
+                                                                 x[-1,:],
                                                                  suffix="_future")
 
             x = np.vstack((x, x_f))
@@ -141,7 +154,7 @@ class SEIRD(SEIRDBase):
         return beta, x, y, z, det_prob, death_prob
     
     
-    def dynamics(self, T, params, x0, confirmed=None, death=None, suffix=""):
+    def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, suffix=""):
         '''Run SEIRD dynamics for T time steps'''
 
         beta0, \
@@ -155,17 +168,16 @@ class SEIRD(SEIRDBase):
         death_rate, \
         det_prob_d = params
 
-        beta = numpyro.sample("beta" + suffix,
-                              ExponentialRandomWalk(loc=beta0, 
-                                                    scale=rw_scale, 
-                                                    drift=drift, 
-                                                    num_steps=T-1))
-
-
+        rw = frozen_random_walk("rw" + suffix,
+                                num_steps=T-1,
+                                num_frozen=num_frozen)
+        
+        beta = numpyro.deterministic("beta", beta0 * np.exp(rw_scale*rw))
+        
         det_prob = numpyro.sample("det_prob" + suffix,
                                   LogisticRandomWalk(loc=det_prob0, 
                                                      scale=rw_scale, 
-                                                     drift=0, 
+                                                     drift=0,
                                                      num_steps=T-1))
 
         # Run ODE
@@ -182,6 +194,3 @@ class SEIRD(SEIRDBase):
             z = observe("z" + suffix, x[:,5], det_prob_d, det_noise_scale, obs = death)
 
         return beta, det_prob, x, y, z
-
-
-        
