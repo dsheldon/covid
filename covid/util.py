@@ -22,6 +22,11 @@ from pathlib import Path
 
 import cachetools
 
+import scipy
+import scipy.stats
+
+from tqdm import tqdm
+
 
 """
 ************************************************************
@@ -314,49 +319,108 @@ def gen_forecasts(data,
         
         
         
-def score_forecasts(start,
-                    place,
-                    data,
-                    prefix="results",
-                    model_type=covid.models.SEIRD.SEIRD,
-                    eval_date=None,
-                    method="mae"):
+"""
+************************************************************
+Performance metrics
+************************************************************
+"""
 
-    model = model_type()
+def score_place(forecast_date,
+                data,
+                place,
+                model_type=covid.models.SEIRD.SEIRD,
+                prefix="results"):
+
+    '''Gives performance metrics for each time horizon for one place'''
     
     filename = Path(prefix) / 'samples' / f'{place}.npz'
     prior_samples, mcmc_samples, post_pred_samples, forecast_samples = \
         load_samples(filename)
 
-    # cumulative deaths 
-    death = data[place]['data'][start:eval_date].death
-    end = death.index.max()
+    model = model_type()
 
-    obs = death[start:]
+    start = pd.to_datetime(forecast_date) + pd.Timedelta("1d")
+
+    # cumulative deaths 
+    obs = data[place]['data'][start:].death
+    end = obs.index.max()
 
     T = len(obs)
     z = model.get(forecast_samples, 'z', forecast=True)[:,:T]
-    df = pd.DataFrame(index=obs.index, data=z.T)
- 
+    samples = pd.DataFrame(index=obs.index, data=z.T)
 
-    if method == "ls":
-         
-          ls = []
+    n_samples = samples.shape[1]
 
-          for index, row in df.iterrows():
-               ls.append(sum((round(df.loc[index,:]) < (round(obs.loc[index]) + 100) )&
-          (round(df.loc[index,:]) > (round(obs.loc[index]) - 100))))
+    # Construct output data frame
+    scores = pd.DataFrame(index=obs.index)
+    scores['place'] = place
+    scores['forecast_date'] = pd.to_datetime(forecast_date)
+    scores['horizon'] = (scores.index - scores['forecast_date'])/pd.Timedelta("1d")
+    
+    # Compute MAE
+    point_forecast = samples.median(axis=1)
+    scores['err'] = obs-point_forecast
 
-          err = np.mean(np.clip(np.log(np.array(ls)),-10))
-          #err_plot = err.plot(style='0')     
-    else:
-         point_forecast = df.median(axis=1)
-         
-         errs = (obs-point_forecast).rename('errs')
+    # Compute log-score
+    within_100 = samples.sub(obs, axis=0).abs().lt(100)
+    prob = (within_100.sum(axis=1)/n_samples)
+    log_score = prob.apply(np.log).clip(lower=-10).rename('log score')
+    scores['log_score'] = log_score
 
-         err = errs[eval_date] if eval_date is not None else errs.values[-1]
+    # Compute quantile of observed value in samples
+    scores['quantile'] = samples.lt(obs, axis=0).sum(axis=1) / n_samples
+    
+    return scores
 
-         #err_plot = err.plot(style='o')
-         #err = err.abs().mean()
+def score_forecast(forecast_date,
+                   data, 
+                   places=None, 
+                   model_type=covid.models.SEIRD.SEIRD,
+                   prefix="results"):
 
-    return err
+    
+    if places is None:
+        places = data.keys()
+    
+    # Assemble performance metrics each place and time horizon
+    details = pd.DataFrame()
+    
+    print(f'Scoring all places for {forecast_date} forecast')
+    
+    for place in tqdm(places):
+                
+        place_df = score_place(forecast_date,
+                               data,
+                               place,
+                               model_type=model_type,
+                               prefix=prefix)
+
+        details = details.append(place_df)
+
+        
+    # Now summarize over places for each time horizon
+    dates = details.index.unique()
+    summary = pd.DataFrame(index=dates)
+    
+    for date in dates:
+        
+        horizon = int((date-pd.to_datetime(forecast_date))/pd.Timedelta("1d"))
+        rows = details.loc[date]
+        
+        summary.loc[date, 'horizon'] = horizon
+
+        # Compute bias
+        summary.loc[date, 'mean_signed_abs_err'] = rows['err'].mean()
+        
+        # Compute MAE
+        summary.loc[date, 'MAE'] = rows['err'].abs().mean()
+        
+        # Compute avg. log-score
+        summary.loc[date, 'log_score'] = rows['log_score'].mean()
+        
+        # Compute KS statistic
+        ks, pval = scipy.stats.kstest(rows['quantile'], 'uniform')
+        summary.loc[date,'KS'] = ks
+        summary.loc[date,'KS_pval'] = pval
+        
+    return summary, details
