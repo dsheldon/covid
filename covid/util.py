@@ -25,6 +25,8 @@ import cachetools
 import scipy
 import scipy.stats
 
+from .compartment import SEIRModel
+
 from tqdm import tqdm
 
 
@@ -117,11 +119,11 @@ Plotting
 ************************************************************
 """
     
-def plot_R0(mcmc_samples, start):
+def plot_R0(mcmc_samples, start, ax=None):
 
-    fig = plt.figure(figsize=(5,3))
+    ax = plt.axes(ax)
     
-    # Compute average R0 over time
+    # Compute R0 over time
     gamma = mcmc_samples['gamma'][:,None]
     beta = mcmc_samples['beta']
     t = pd.date_range(start=start, periods=beta.shape[1], freq='D')
@@ -129,15 +131,31 @@ def plot_R0(mcmc_samples, start):
 
     pi = np.percentile(R0, (10, 90), axis=0)
     df = pd.DataFrame(index=t, data={'R0': np.median(R0, axis=0)})
-    df.plot(style='-o')
-    plt.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
+    df.plot(style='-o', ax=ax)
+    ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
 
-    plt.axhline(1, linestyle='--')
+    ax.axhline(1, linestyle='--')
     
-    #plt.tight_layout()
 
-    return fig
+def plot_growth_rate(mcmc_samples, start, model=SEIRModel, ax=None):
+    
+    ax = plt.axes(ax)
 
+    # Compute growth rate over time
+    beta = mcmc_samples['beta']
+    sigma = mcmc_samples['sigma'][:,None]
+    gamma = mcmc_samples['gamma'][:,None]
+    t = pd.date_range(start=start, periods=beta.shape[1], freq='D')
+
+    growth_rate = SEIRModel.growth_rate((beta, sigma, gamma))
+
+    pi = np.percentile(growth_rate, (10, 90), axis=0)
+    df = pd.DataFrame(index=t, data={'growth_rate': np.median(growth_rate, axis=0)})
+    df.plot(style='-o', ax=ax)
+    ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.1)
+
+    ax.axhline(0, linestyle='--')
+    
 
 
 """
@@ -305,13 +323,14 @@ def gen_forecasts(data,
 
                 if show:
                     plt.show()
-            
-    fig = plot_R0(mcmc_samples, start)    
+    
+    fig, ax = plt.subplots(figsize=(5,4))
+    plot_growth_rate(mcmc_samples, start, ax=ax)
     plt.title(place)
     plt.tight_layout()
     
     if save:
-        filename = vis_path / f'{place}_R0.png'
+        filename = vis_path / f'{place}_growth_rate.png'
         plt.savefig(filename)
 
     if show:
