@@ -219,20 +219,23 @@ class Model():
         ax = plt.axes(ax)
         
         # Plot posterior predictive for observed times
-        self.plot_samples(post_pred_samples, ax=ax, start=start, plot_fields=[variable])
+        median_max1, pi_max1 = self.plot_samples(post_pred_samples, ax=ax, start=start, plot_fields=[variable])
                 
         # Plot forecast
         T = self.horizon(post_pred_samples)
         obs_end = pd.to_datetime(start) + pd.Timedelta(T-1, "d")
         forecast_start = obs_end + pd.Timedelta("1d")
         
-        median_max, pi_max = self.plot_samples(forecast_samples,
-                                               start=forecast_start,
-                                               T=T_future,
-                                               ax=ax,
-                                               forecast=True,
-                                               legend=False,
-                                               plot_fields=[variable])
+        median_max2, pi_max2 = self.plot_samples(forecast_samples,
+                                                 start=forecast_start,
+                                                 T=T_future,
+                                                 ax=ax,
+                                                 forecast=True,
+                                                 legend=False,
+                                                 plot_fields=[variable])
+        
+        median_max = max(median_max1, median_max2)
+        pi_max = max(pi_max1, pi_max2)
         
         # Plot observation
         forecast_end = forecast_start + pd.Timedelta(T_future-1, "d")
