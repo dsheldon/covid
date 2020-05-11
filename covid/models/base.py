@@ -150,11 +150,14 @@ class Model():
         
         
     '''These are methods e.g., call self.z(samples) to get z'''
-    z = getter('z')
-    y = getter('y')
+    #z = getter('z')
+    #y = getter('y')
     mean_y = getter('mean_y')
     mean_z = getter('mean_z')
 
+    z = mean_z
+    y = mean_y
+    
     # There are only available in some models but easier to define here
     dz = getter('dz')
     dy = getter('dy')
@@ -179,7 +182,7 @@ class Model():
         T_data = self.horizon(samples, forecast=forecast)        
         T = T_data if T is None else min(T, T_data) 
         
-        fields = {f: self.get(samples, f, forecast=forecast)[:,:T] for f in plot_fields}
+        fields = {f: 0.0 + self.get(samples, f, forecast=forecast)[:,:T] for f in plot_fields}
         names = {f: self.names[f] for f in plot_fields}
                 
         medians = {names[f]: np.median(v, axis=0) for f, v in fields.items()}    
