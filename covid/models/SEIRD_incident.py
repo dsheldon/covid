@@ -6,7 +6,7 @@ import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
-from .util import observe, ExponentialRandomWalk, LogisticRandomWalk
+from .util import observe, observe_nb2, ExponentialRandomWalk, LogisticRandomWalk
 from .base import SEIRDBase, getter
 
 import numpy as onp
@@ -42,8 +42,9 @@ class SEIRD(SEIRDBase):
                  gamma_shape = 8,
                  det_prob_est = 0.3,
                  det_prob_conc = 50,
-                 det_noise_scale = 0.7,
-                 rw_scale = 1e-1,
+                 confirmed_dispersion=0.3,
+                 death_dispersion=0.3,
+                 rw_scale = 2e-1,
                  forecast_rw_scale = 0,
                  drift_scale = None,
                  num_frozen=0,
@@ -55,10 +56,10 @@ class SEIRD(SEIRDBase):
         '''        
                 
         # Sample initial number of infected individuals
-        I0 = numpyro.sample("I0", dist.Uniform(0, 0.01*N))
-        E0 = numpyro.sample("E0", dist.Uniform(0, 0.01*N))
-        H0 = numpyro.sample("H0", dist.Uniform(0, 1e-4*N))
-        D0 = numpyro.sample("D0", dist.Uniform(0, 1e-4*N))
+        I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
+        E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
+        H0 = numpyro.sample("H0", dist.Uniform(0, 1e-3*N))
+        D0 = numpyro.sample("D0", dist.Uniform(0, 1e-3*N))
 
         # Sample parameters
         sigma = numpyro.sample("sigma", 
@@ -102,10 +103,10 @@ class SEIRD(SEIRDBase):
         
         # First observation
         with numpyro.handlers.scale(scale_factor=0.5):
-            y0 = observe("dy0", x0[6], det_prob0, det_noise_scale, obs=confirmed0)
+            y0 = observe_nb2("dy0", x0[6], det_prob0, confirmed_dispersion, obs=confirmed0)
             
         with numpyro.handlers.scale(scale_factor=2.0):
-            z0 = observe("dz0", x0[5], det_prob_d, det_noise_scale, obs=death0)
+            z0 = observe_nb2("dz0", x0[5], det_prob_d, death_dispersion, obs=death0)
 
         params = (beta0, 
                   sigma, 
@@ -113,7 +114,8 @@ class SEIRD(SEIRDBase):
                   rw_scale, 
                   drift, 
                   det_prob0, 
-                  det_noise_scale, 
+                  confirmed_dispersion, 
+                  death_dispersion,
                   death_prob, 
                   death_rate, 
                   det_prob_d)
@@ -137,7 +139,8 @@ class SEIRD(SEIRDBase):
                       forecast_rw_scale, 
                       drift, 
                       det_prob[-1], 
-                      det_noise_scale, 
+                      confirmed_dispersion, 
+                      death_dispersion,
                       death_prob, 
                       death_rate, 
                       det_prob_d)
@@ -163,7 +166,8 @@ class SEIRD(SEIRDBase):
         rw_scale, \
         drift, \
         det_prob0, \
-        det_noise_scale, \
+        confirmed_dispersion, \
+        death_dispersion, \
         death_prob, \
         death_rate, \
         det_prob_d = params
@@ -189,10 +193,10 @@ class SEIRD(SEIRDBase):
 
         # Noisy observations
         with numpyro.handlers.scale(scale_factor=0.5):
-            y = observe("dy" + suffix, x_diff[:,6], det_prob, det_noise_scale, obs = confirmed)   
+            y = observe_nb2("dy" + suffix, x_diff[:,6], det_prob, confirmed_dispersion, obs = confirmed)   
 
         with numpyro.handlers.scale(scale_factor=2.0):
-            z = observe("dz" + suffix, x_diff[:,5], det_prob_d, det_noise_scale, obs = death)  
+            z = observe_nb2("dz" + suffix, x_diff[:,5], det_prob_d, death_dispersion, obs = death)  
 
         
         return beta, det_prob, x, y, z
