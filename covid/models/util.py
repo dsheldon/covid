@@ -120,16 +120,16 @@ def observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     return y
 
 
-def observe_poisson(name, latent, det_rate, det_noise_scale, obs=None):
+def observe_poisson(name, latent, det_prob, obs=None):
 
     mask = True
     if obs is not None:
         mask = np.isfinite(obs) & (obs >= 0)
         obs = np.where(mask, obs, 0.0)
         
-    det_rate = np.broadcast_to(det_rate, latent.shape)
+    det_prob = np.broadcast_to(det_prob, latent.shape)
 
-    mean = det_rate * latent
+    mean = det_prob * latent
     d = dist.Poisson(mean)    
     numpyro.deterministic("mean_" + name, mean)
     
@@ -139,7 +139,7 @@ def observe_poisson(name, latent, det_rate, det_noise_scale, obs=None):
     return y
 
 
-def observe_nb2(name, latent, det_rate, det_noise_scale, obs=None):
+def observe_nb2(name, latent, det_prob, dispersion, obs=None):
 
     mask = True
     if obs is not None:
@@ -149,12 +149,12 @@ def observe_nb2(name, latent, det_rate, det_noise_scale, obs=None):
     if np.any(mask):
         warnings.warn('Some observed values are invalid')
         
-    det_rate = np.broadcast_to(det_rate, latent.shape)
+    det_prob = np.broadcast_to(det_prob, latent.shape)
 
-    mean = det_rate * latent
+    mean = det_prob * latent
     numpyro.deterministic("mean_" + name, mean)
     
-    d = NB2(mu=mean, k=0.5)
+    d = NB2(mu=mean, k=dispersion)
     
     with numpyro.handlers.mask(mask_array=mask):
         y = numpyro.sample(name, d, obs = obs)
