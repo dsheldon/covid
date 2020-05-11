@@ -61,6 +61,20 @@ class SEIRD(SEIRDBase):
         H0 = numpyro.sample("H0", dist.Uniform(0, 1e-3*N))
         D0 = numpyro.sample("D0", dist.Uniform(0, 1e-3*N))
 
+
+        # Sample dispersion parameters around specified values
+        confirmed_dispersion = numpyro.sample("confirmed_dispersion", 
+                                              dist.TruncatedNormal(low=0.,
+                                                                   loc=confirmed_dispersion, 
+                                                                   scale=confirmed_dispersion))
+
+
+        death_dispersion = numpyro.sample("death_dispersion", 
+                                           dist.TruncatedNormal(low=0.,
+                                                                loc=death_dispersion, 
+                                                                scale=death_dispersion))
+
+        
         # Sample parameters
         sigma = numpyro.sample("sigma", 
                                dist.Gamma(sigma_shape, sigma_shape * E_duration_est))
