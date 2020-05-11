@@ -179,6 +179,8 @@ def run_place(data,
               **kwargs):
 
 
+    numpyro.enable_x64()
+
     print(f"Running {place} (start={start}, end={end})")
     
     place_data = data[place]['data'][start:end]
@@ -330,7 +332,7 @@ def gen_forecasts(data,
     plt.tight_layout()
     
     if save:
-        filename = vis_path / f'{place}_growth_rate.png'
+        filename = vis_path / f'{place}_R0.png'
         plt.savefig(filename)
 
     if show:
@@ -415,13 +417,17 @@ def score_forecast(forecast_date,
     
     for place in tqdm(places):
                 
-        place_df = score_place(forecast_date,
-                               data,
-                               place,
-                               model_type=model_type,
-                               prefix=prefix)
 
-        details = details.append(place_df)
+        try:
+            place_df = score_place(forecast_date,
+                                   data,
+                                   place,
+                                   model_type=model_type,
+                                   prefix=prefix)
+        except:
+            warnings.warn(f'Could not score {place}')
+        else:
+            details = details.append(place_df)
 
         
     # Now summarize over places for each time horizon
