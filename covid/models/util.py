@@ -6,6 +6,9 @@ import numpyro.distributions as dist
 
 import pandas as pd
 
+import warnings
+
+
 """
 ************************************************************
 Shared model / distribution components
@@ -45,7 +48,7 @@ def ExponentialRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
         x_t := x_{t-1} * exp(drift + eps_t),    eps_t ~ N(0, scale)        
     '''
     
-    log_loc = np.log(loc) + drift * np.arange(num_steps, dtype='float32')
+    log_loc = np.log(loc) + drift * (np.arange(num_steps)+0.)
     
     return dist.TransformedDistribution(
         dist.GaussianRandomWalk(scale=scale, num_steps=num_steps),
@@ -70,7 +73,7 @@ def LogisticRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
         x_t := x_{t-1} * exp(drift + eps_t),    eps_t ~ N(0, scale)
     '''
    
-    logistic_loc = np.log(loc/(1-loc)) + drift * np.arange(num_steps, dtype='float32')
+    logistic_loc = np.log(loc/(1-loc)) + drift * (np.arange(num_steps)+0.)
    
     return dist.TransformedDistribution(
         dist.GaussianRandomWalk(scale=scale, num_steps=num_steps),
@@ -81,19 +84,25 @@ def LogisticRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
     )
 
 
+def NB2(mu=None, k=None):
+    conc = 1./k
+    rate = conc/mu
+    return dist.GammaPoisson(conc, rate)
+
 
 def observe(*args, **kwargs):
-#    return _observe_binom_approx(*args, **kwargs)
-    return _observe_normal(*args, **kwargs)
+    return observe_normal(*args, **kwargs)
+#    return observe_poisson(*args, **kwargs)
+#    return observe_gamma(*args, **kwargs)
 
-def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
+def observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     mask = True
 
     reg = 0.
     latent = latent + (reg/det_rate)
     
     if obs is not None:
-        mask = np.isfinite(obs)
+        mask = np.isfinite(obs) & (obs >= 0)
         obs = np.where(mask, obs, 0.0)
         obs += reg
         
@@ -101,7 +110,7 @@ def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
 
     mean = det_rate * latent
     scale = det_noise_scale * mean + 1
-    d = dist.Normal(mean, scale)
+    d = dist.TruncatedNormal(0., mean, scale)
     
     numpyro.deterministic("mean_" + name, mean)
     
@@ -110,33 +119,42 @@ def _observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
         
     return y
 
-    
-def _observe_binom_approx(name, latent, det_rate, det_conc, obs=None):
-    '''Make observations of a latent variable using BinomialApprox.'''
-    
-    mask = True
-    
-    # Regularization: add reg to observed, and (reg/det_rate) to latent
-    # The primary purpose is to avoid zeros, which are invalid values for 
-    # the Beta observation model.
-    reg = 0.5 
-    latent = latent + (reg/det_rate)
-        
-    if obs is not None:
-        '''
-        Workaround for a jax issue: substitute default values
-        AND mask out bad observations. 
-        
-        See https://forum.pyro.ai/t/behavior-of-mask-handler-with-invalid-observation-possible-bug/1719/5
-        '''
-        mask = np.isfinite(obs)
-        obs = np.where(mask, obs, 0.5 * latent)
-        obs = obs + reg
 
-    det_rate = np.broadcast_to(det_rate, latent.shape)        
-    det_conc = np.minimum(det_conc, latent) # don't allow it to be *more* concentrated than Binomial
+def observe_poisson(name, latent, det_rate, det_noise_scale, obs=None):
+
+    mask = True
+    if obs is not None:
+        mask = np.isfinite(obs) & (obs >= 0)
+        obs = np.where(mask, obs, 0.0)
+        
+    det_rate = np.broadcast_to(det_rate, latent.shape)
+
+    mean = det_rate * latent
+    d = dist.Poisson(mean)    
+    numpyro.deterministic("mean_" + name, mean)
     
-    d = BinomialApprox(latent + (reg/det_rate), det_rate, det_conc)
+    with numpyro.handlers.mask(mask_array=mask):
+        y = numpyro.sample(name, d, obs = obs)
+        
+    return y
+
+
+def observe_nb2(name, latent, det_rate, det_noise_scale, obs=None):
+
+    mask = True
+    if obs is not None:
+        mask = np.isfinite(obs) & (obs >= 0.0)
+        obs = np.where(mask, obs, 0.0)
+        
+    if np.any(mask):
+        warnings.warn('Some observed values are invalid')
+        
+    det_rate = np.broadcast_to(det_rate, latent.shape)
+
+    mean = det_rate * latent
+    numpyro.deterministic("mean_" + name, mean)
+    
+    d = NB2(mu=mean, k=0.5)
     
     with numpyro.handlers.mask(mask_array=mask):
         y = numpyro.sample(name, d, obs = obs)

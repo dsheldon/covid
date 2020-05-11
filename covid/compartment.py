@@ -35,7 +35,7 @@ class CompartmentModel(object):
         x0 is shape (d,)
         theta is shape (nargs,)
         '''
-        t = np.arange(T, dtype='float32')
+        t = np.arange(T, dtype='float') + 0.
         return odeint(cls.dx_dt, x0, t, *theta)
 
     
