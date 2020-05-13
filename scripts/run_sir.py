@@ -19,7 +19,7 @@ if __name__ == "__main__":
         exit()
 
     config = getattr(configs, args.config)
-        
+
     data = util.load_data()
     
     util.run_place(data,
@@ -34,4 +34,5 @@ if __name__ == "__main__":
                        args.place,
                        start=args.start,
                        prefix=args.prefix,
+                       model_type=config['model'],
                        show=False)
