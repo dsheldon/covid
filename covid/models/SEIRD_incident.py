@@ -58,6 +58,8 @@ class SEIRD(SEIRDBase):
         confirmed= np.transpose(confirmed[0,:,:])
         death = np.transpose(death[1,:,:])
         num_places = confirmed.shape[0]
+        print (confirmed)
+        print (death)
         with numpyro.plate("num_places", num_places): 
   
       # Sample initial number of infected individuals
@@ -197,35 +199,39 @@ class SEIRD(SEIRDBase):
         det_prob_d = params
 
         num_places= beta0.shape
-
+        sigma = sigma[:,None]
+        gamma = gamma[:,None]
+        death_rate = death_rate[:,None]
+        death_prob = death_prob[:,None]
+        det_prob_d = det_prob_d[:,None]
+        confirmed_dispersion = confirmed_dispersion[:,None]
+        death_dispersion = death_dispersion[:,None]
         
-        #with numpyro.plate("places", num_places):
-        rw = numpyro.sample("rw" + suffix,
+        with numpyro.plate("places", 2):
+            rw = numpyro.sample("rw" + suffix,
                                 ExponentialRandomWalk(loc = 1.,
                                                       scale = rw_scale,
                                                       drift = 0., 
                                                       num_steps = T-1))  
-        det_prob = numpyro.sample("det_prob" + suffix,
+            det_prob = numpyro.sample("det_prob" + suffix,
                                   LogisticRandomWalk(loc=.3, 
                                                      scale=rw_scale, 
                                                      drift=0,
                                                      num_steps=T-1))
-        beta = np.transpose(beta0* rw[:,None])
-        det_prob = np.transpose(np.concatenate((det_prob[1:,None],det_prob[1:,None]),axis=1))
+        beta = beta0[:,None]* rw
         apply_model = lambda x0, beta, sigma, gamma, death_prob, death_rate: SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
         x = jax.vmap(apply_model)(x0, beta, sigma, gamma, death_prob, death_rate)
         x = x[:,1:,:] # drop first time step from result (duplicates initial value)
         # Run ODE
         x_diff = np.diff(x, axis=1)
         # Noisy observations
+        print (x_diff.shape)
         print (confirmed.shape)
-        print (det_prob.shape)
-        print (x_diff[:,:,6].shape)
         with numpyro.handlers.scale(scale_factor=0.5):
-            y = observe_nb2("dy" + suffix, x_diff[:,:,6], det_prob, confirmed_dispersion.reshape(2,1), obs = confirmed)   
+            y = observe_nb2("dy" + suffix, x_diff[:,:,6], det_prob[:,1:], confirmed_dispersion, obs = confirmed)   
 
         with numpyro.handlers.scale(scale_factor=2.0):
-            z = observe_nb2("dz" + suffix, x_diff[:,:,5], det_prob_d.reshape(2,1), death_dispersion.reshape(2,1), obs = death)  
+            z = observe_nb2("dz" + suffix, x_diff[:,:,5], det_prob_d, death_dispersion, obs = death)  
 
         
         return beta, det_prob, x, y, z

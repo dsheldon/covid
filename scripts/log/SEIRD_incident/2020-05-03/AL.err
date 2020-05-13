@@ -1,0 +1,20 @@
+/home/gcgibson/anaconda3/lib/python3.7/site-packages/jax/lax/lax.py:5222: UserWarning: Explicitly requested dtype float64 requested in asarray is not available, and will be truncated to dtype float32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/google/jax#current-gotchas for more.
+  warnings.warn(msg.format(dtype, fun_name , truncated_dtype))
+/home/gcgibson/anaconda3/lib/python3.7/site-packages/jax/lax/lax.py:5222: UserWarning: Explicitly requested dtype float64 requested in array is not available, and will be truncated to dtype float32. To enable more dtypes, set the jax_enable_x64 configuration option or the JAX_ENABLE_X64 shell environment variable. See https://github.com/google/jax#current-gotchas for more.
+  warnings.warn(msg.format(dtype, fun_name , truncated_dtype))
+/home/gcgibson/covid/covid/models/util.py:150: UserWarning: Some observed values are invalid
+  warnings.warn('Some observed values are invalid')
+Traceback (most recent call last):
+  File "run_sir.py", line 32, in <module>
+    **config['args'])
+  File "/home/gcgibson/covid/covid/util.py", line 221, in run_place
+    num_samples=num_samples)
+  File "/home/gcgibson/covid/covid/models/base.py", line 76, in infer
+    mcmc.run(rng_key, **self.obs, **args)    
+  File "/home/gcgibson/anaconda3/lib/python3.7/site-packages/numpyro/infer/mcmc.py", line 1214, in run
+    args, kwargs, collect_fields)
+  File "/home/gcgibson/anaconda3/lib/python3.7/site-packages/numpyro/infer/mcmc.py", line 1087, in _single_chain_mcmc
+    model_args=args, model_kwargs=kwargs)
+  File "/home/gcgibson/anaconda3/lib/python3.7/site-packages/numpyro/infer/mcmc.py", line 526, in init
+    raise RuntimeError("Cannot find valid initial parameters. "
+RuntimeError: Cannot find valid initial parameters. Please check your model again.
