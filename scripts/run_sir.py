@@ -28,6 +28,7 @@ if __name__ == "__main__":
                    end=args.end,
                    prefix=args.prefix,
                    model_type=config['model'],
+                   hierarchical=True,
                    **config['args'])
     
     util.gen_forecasts(data,

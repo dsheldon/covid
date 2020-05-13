@@ -3,13 +3,13 @@
 
 root=results
 start='2020-03-15'
-configs="SEIRD SEIRD_variable_detection"
+configs="SEIRD_incident"
 #forecast_dates="2020-04-04 2020-04-11  2020-04-18 2020-04-25"   # validation
 forecast_dates="2020-05-03" # this week's submission
 
 
-states="AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY"
-
+#states="AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY"
+states="AL"
 for config in $configs; do
     for forecast_date in $forecast_dates; do
 	prefix=$root/$config/$forecast_date

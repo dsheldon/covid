@@ -170,29 +170,52 @@ def run_place(data,
               start = '2020-03-04',
               end = None,
               save = True,
-              num_warmup = 1000,
-              num_samples = 1000,
+              num_warmup = 100,
+              num_samples = 100,
               num_chains = 1,
               num_prior_samples = 0,              
               T_future=4*7,
               prefix = "results",
+              hierarchical = False,
               **kwargs):
 
 
     numpyro.enable_x64()
 
-    print(f"Running {place} (start={start}, end={end})")
+    if hierarchical is False:
+         print(f"Running {place} (start={start}, end={end})")
     
-    place_data = data[place]['data'][start:end]
-    T = len(place_data)
+         place_data = data[place]['data'][start:end]
+         T = len(place_data)
 
-    model = model_type(
-        data = place_data,
-        T = T,
-        N = data[place]['pop'],
-        **kwargs
-    )
-    
+         model = model_type(
+              data = place_data,
+              T = T,
+              N = data[place]['pop'],
+              **kwargs
+         )
+    else:
+          #hack to grab data dimension
+         place_data = data["NY"]['data'][start:end]
+         T = len(place_data)
+         places = list(data.keys())
+          
+         places = ["NY","MA"]
+         place_data_total = onp.zeros((len(places),T,2))
+         N = onp.zeros((len(places)))
+         place_idx = 0
+         for place in places:
+          place_data = data[place]['data'][start:end]
+          place_data_total[place_idx,:] = place_data
+          N[place_idx] = data[place]['pop']
+          place_idx +=1
+          model = model_type(
+              data = place_data_total,
+              T = T,
+              N = N,
+              **kwargs
+         )
+
     print(" * running MCMC")
     mcmc_samples = model.infer(num_warmup=num_warmup, 
                                num_samples=num_samples)

@@ -66,7 +66,6 @@ class Model():
         '''Fit using MCMC'''
         
         args = dict(self.args, **args)
-        
         kernel = NUTS(self, init_strategy = numpyro.infer.util.init_to_median())
 
         mcmc = MCMC(kernel, 
@@ -276,10 +275,7 @@ class SEIRDBase(Model):
         if self.data is None:
             return {}
 
-        return {
-            'confirmed': self.data['confirmed'].values,
-            'death': self.data['death'].values
-           }
+        return {'confirmed':self.data,'death':self.data}
     
     
     def dz_mean(self, samples, **args):
