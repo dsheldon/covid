@@ -180,7 +180,7 @@ def run_place(data,
               **kwargs):
 
 
-    numpyro.enable_x64()
+    #numpyro.enable_x64()
 
     if hierarchical is False:
          print(f"Running {place} (start={start}, end={end})")

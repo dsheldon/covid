@@ -6,7 +6,7 @@ import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
-from .util import observe, observe_nb2, ExponentialRandomWalk, LogisticRandomWalk
+from .util import observe, observe_nb2,observe_normal, ExponentialRandomWalk, LogisticRandomWalk
 from .base import SEIRDBase, getter
 
 import numpy as onp
@@ -20,7 +20,7 @@ def frozen_random_walk(name, num_steps=100, num_frozen=10):
 
     rw = numpyro.sample(name, dist.GaussianRandomWalk(num_steps=num_random))
     rw = np.concatenate((rw, np.repeat(rw[-1], num_frozen)))    
-    return rw
+    return observe_normal,rw
 
 """
 ************************************************************
@@ -42,8 +42,8 @@ class SEIRD(SEIRDBase):
                  gamma_shape = 8,
                  det_prob_est = 0.3,
                  det_prob_conc = 50,
-                 confirmed_dispersion=0.3,
-                 death_dispersion=0.3,
+                 confirmed_dispersion_est=0.15,
+                 death_dispersion_est=0.15,
                  rw_scale = 2e-1,
                  forecast_rw_scale = 0,
                  drift_scale = None,
@@ -72,14 +72,14 @@ class SEIRD(SEIRDBase):
         # Sample dispersion parameters around specified values
              confirmed_dispersion = numpyro.sample("confirmed_dispersion", 
                                               dist.TruncatedNormal(low=0.,
-                                                                   loc=confirmed_dispersion, 
-                                                                   scale=confirmed_dispersion))
+                                                                   loc=confirmed_dispersion_est, 
+                                                                   scale=confirmed_dispersion_est))
 
 
              death_dispersion = numpyro.sample("death_dispersion", 
                                            dist.TruncatedNormal(low=0.,
-                                                                loc=death_dispersion, 
-                                                                scale=death_dispersion))
+                                                                loc=death_dispersion_est, 
+                                                                scale=death_dispersion_est))
 
         
         # Sample parameters
@@ -209,15 +209,15 @@ class SEIRD(SEIRDBase):
         
         with numpyro.plate("places", 2):
             rw = numpyro.sample("rw" + suffix,
-                                ExponentialRandomWalk(loc = 1.,
+                                ExponentialRandomWalk(loc = 1.0,
                                                       scale = rw_scale,
                                                       drift = 0., 
                                                       num_steps = T-1))  
             det_prob = numpyro.sample("det_prob" + suffix,
-                                  LogisticRandomWalk(loc=.3, 
+                                  LogisticRandomWalk(loc=0.3, 
                                                      scale=rw_scale, 
                                                      drift=0,
-                                                     num_steps=T-1))
+                                                     num_steps=T-2))
         beta = beta0[:,None]* rw
         apply_model = lambda x0, beta, sigma, gamma, death_prob, death_rate: SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
         x = jax.vmap(apply_model)(x0, beta, sigma, gamma, death_prob, death_rate)
@@ -225,13 +225,12 @@ class SEIRD(SEIRDBase):
         # Run ODE
         x_diff = np.diff(x, axis=1)
         # Noisy observations
-        print (x_diff.shape)
-        print (confirmed.shape)
+        # need to drop one det_prob because of differencing 
         with numpyro.handlers.scale(scale_factor=0.5):
-            y = observe_nb2("dy" + suffix, x_diff[:,:,6], det_prob[:,1:], confirmed_dispersion, obs = confirmed)   
+            y = observe_normal("dy" + suffix, x_diff[:,:,6], det_prob, .15, obs = confirmed)   
 
         with numpyro.handlers.scale(scale_factor=2.0):
-            z = observe_nb2("dz" + suffix, x_diff[:,:,5], det_prob_d, death_dispersion, obs = death)  
+            z = observe_normal("dz" + suffix, x_diff[:,:,5], det_prob_d, .15, obs = death)  
 
         
         return beta, det_prob, x, y, z
