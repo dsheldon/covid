@@ -55,8 +55,8 @@ class SEIRD(SEIRDBase):
         Stochastic SEIR model. Draws random parameters and runs dynamics.
         '''        
         #Hack right now to avoid major refactor
-        confirmed= np.transpose(confirmed[0,:,:])
-        death = np.transpose(death[1,:,:])
+        confirmed= np.transpose(confirmed[0,:,:]).astype(np.float32)
+        death = np.transpose(death[1,:,:]).astype(np.float32)
         num_places = confirmed.shape[0]
         print (confirmed)
         print (death)
@@ -130,10 +130,10 @@ class SEIRD(SEIRDBase):
             death0, death = None, None 
         # First observation
         with numpyro.handlers.scale(scale_factor=0.5):
-            y0 = observe_nb2("dy0", x0[:,6], det_prob0, confirmed_dispersion, obs=confirmed0)
+            y0 = observe_nb2("dy0", x0[:,6], det_prob0, .5, obs=confirmed0)
             
         with numpyro.handlers.scale(scale_factor=2.0):
-            z0 = observe_nb2("dz0", x0[:,5], det_prob_d, death_dispersion, obs=death0)
+            z0 = observe_nb2("dz0", x0[:,5], det_prob_d, .5, obs=death0)
 
         params = (beta0, 
                   sigma, 
@@ -216,7 +216,7 @@ class SEIRD(SEIRDBase):
             det_prob = numpyro.sample("det_prob" + suffix,
                                   LogisticRandomWalk(loc=0.3, 
                                                      scale=rw_scale, 
-                                                     drift=0,
+                                                     drift=0.0,
                                                      num_steps=T-2))
         beta = beta0[:,None]* rw
         apply_model = lambda x0, beta, sigma, gamma, death_prob, death_rate: SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
@@ -227,10 +227,10 @@ class SEIRD(SEIRDBase):
         # Noisy observations
         # need to drop one det_prob because of differencing 
         with numpyro.handlers.scale(scale_factor=0.5):
-            y = observe_normal("dy" + suffix, x_diff[:,:,6], det_prob, .15, obs = confirmed)   
+            y = observe_nb2("dy" + suffix, x_diff[:,:,6], det_prob,confirmed_dispersion , obs = confirmed)   
 
         with numpyro.handlers.scale(scale_factor=2.0):
-            z = observe_normal("dz" + suffix, x_diff[:,:,5], det_prob_d, .15, obs = death)  
+            z = observe_nb2("dz" + suffix, x_diff[:,:,5], det_prob_d, death_dispersion, obs = death)  
 
         
         return beta, det_prob, x, y, z
