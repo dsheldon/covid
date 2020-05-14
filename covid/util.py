@@ -180,8 +180,9 @@ def run_place(data,
               **kwargs):
 
 
-    #numpyro.enable_x64()
+    numpyro.enable_x64()
 
+    print (hierarchical)
     if hierarchical is False:
          print(f"Running {place} (start={start}, end={end})")
     
@@ -239,7 +240,7 @@ def run_place(data,
         # Save samples
         path = Path(prefix) / 'samples'
         path.mkdir(parents=True, exist_ok=True)
-        filename = path / f'{place}.npz'
+        filename = path / f'hierarchical.npz'
         
         save_samples(filename,
                      prior_samples,
@@ -249,7 +250,7 @@ def run_place(data,
         
         path = Path(prefix) / 'summary'
         path.mkdir(parents=True, exist_ok=True)
-        filename = path / f'{place}.txt'
+        filename = path / f'hierarchical.txt'
         
         write_summary(filename, model.mcmc)
 
@@ -315,39 +316,39 @@ def gen_forecasts(data,
     filename = samples_path / f'{place}.npz'   
     _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(filename)
         
-    for daily in [False, True]:
-        for scale in ['log', 'lin']:
-            for T in [14, 28]:
+    #for daily in [False, True]:
+     #   for scale in ['log', 'lin']:
+      #      for T in [14, 28]:
 
-                fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
+       #         fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
 
-                if daily:
-                    variables = ['dy', 'dz']
-                    observations = [confirmed.diff(), death.diff()]
-                else:
-                    variables = ['y', 'z']
-                    observations= [confirmed, death]
+        #        if daily:
+         #           variables = ['dy', 'dz']
+          #          observations = [confirmed.diff(), death.diff()]
+           #     else:
+            #        variables = ['y', 'z']
+           #         observations= [confirmed, death]
 
-                for variable, obs, ax in zip(variables, observations, axes):
-                    model.plot_forecast(variable,
-                                        post_pred_samples,
-                                        forecast_samples,
-                                        start,
-                                        T_future=T,
-                                        obs=obs,
-                                        ax=ax,
-                                        scale=scale)
+            #    for variable, obs, ax in zip(variables, observations, axes):
+            #        model.plot_forecast(variable,
+             #                           post_pred_samples,
+             #                           forecast_samples,
+             #                           start,
+             #                           T_future=T,
+             #                           obs=obs,
+             #                           ax=ax,
+             #                           scale=scale)
 
-                name = data[place]['name']
-                plt.suptitle(f'{name} {T} days ')
-                plt.tight_layout()
+              #  name = data[place]['name']
+              #  plt.suptitle(f'{name} {T} days ')
+              #  plt.tight_layout()
 
-                if save:
-                    filename = vis_path / f'{place}_scale_{scale}_daily_{daily}_T_{T}.png'
-                    plt.savefig(filename)
+               # if save:
+               #     filename = vis_path / f'{place}_scale_{scale}_daily_{daily}_T_{T}.png'
+              #      plt.savefig(filename)
 
-                if show:
-                    plt.show()
+               # if show:
+                #    plt.show()
     
     fig, ax = plt.subplots(figsize=(5,4))
     plot_growth_rate(mcmc_samples, start, ax=ax)

@@ -1,5 +1,3 @@
-True
- * running MCMC
 
                              mean       std    median      5.0%     95.0%     n_eff     r_hat
                   D0[0]    155.44     85.82    143.92     31.94    279.16     77.89      0.99
@@ -220,5 +218,3 @@ confirmed_dispersion[1]      0.40      0.11      0.38      0.27      0.55     48
                rw[1,48]      0.26      0.20      0.21      0.04      0.45     38.76      1.01
 
 Number of divergences: 0
- * collecting predictive samples
- * collecting forecast samples
