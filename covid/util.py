@@ -199,9 +199,12 @@ def run_place(data,
           #hack to grab data dimension
          place_data = data["NY"]['data'][start:end]
          T = len(place_data)
-         places = list(data.keys())
-          
-         places = ["NY","MA"]
+         #places = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DC", "DE", "FL", "GA", 
+         #"ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", 
+         # "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", 
+          #"NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
+          #"SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+         places = ["NY","MA","RI"]
          place_data_total = onp.zeros((len(places),T,2))
          N = onp.zeros((len(places)))
          place_idx = 0
@@ -210,10 +213,11 @@ def run_place(data,
           place_data_total[place_idx,:] = place_data
           N[place_idx] = data[place]['pop']
           place_idx +=1
-          model = model_type(
+         model = model_type(
               data = place_data_total,
               T = T,
               N = N,
+              num_places = len(places),
               **kwargs
          )
 
@@ -241,7 +245,7 @@ def run_place(data,
         path = Path(prefix) / 'samples'
         path.mkdir(parents=True, exist_ok=True)
         filename = path / f'hierarchical.npz'
-        
+        onp.save(path / f'data',place_data_total) 
         save_samples(filename,
                      prior_samples,
                      mcmc_samples, 
@@ -316,39 +320,6 @@ def gen_forecasts(data,
     filename = samples_path / f'{place}.npz'   
     _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(filename)
         
-    #for daily in [False, True]:
-     #   for scale in ['log', 'lin']:
-      #      for T in [14, 28]:
-
-       #         fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
-
-        #        if daily:
-         #           variables = ['dy', 'dz']
-          #          observations = [confirmed.diff(), death.diff()]
-           #     else:
-            #        variables = ['y', 'z']
-           #         observations= [confirmed, death]
-
-            #    for variable, obs, ax in zip(variables, observations, axes):
-            #        model.plot_forecast(variable,
-             #                           post_pred_samples,
-             #                           forecast_samples,
-             #                           start,
-             #                           T_future=T,
-             #                           obs=obs,
-             #                           ax=ax,
-             #                           scale=scale)
-
-              #  name = data[place]['name']
-              #  plt.suptitle(f'{name} {T} days ')
-              #  plt.tight_layout()
-
-               # if save:
-               #     filename = vis_path / f'{place}_scale_{scale}_daily_{daily}_T_{T}.png'
-              #      plt.savefig(filename)
-
-               # if show:
-                #    plt.show()
     
     fig, ax = plt.subplots(figsize=(5,4))
     plot_growth_rate(mcmc_samples, start, ax=ax)

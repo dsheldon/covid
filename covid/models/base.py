@@ -275,7 +275,7 @@ class SEIRDBase(Model):
         if self.data is None:
             return {}
 
-        return {'confirmed':self.data,'death':self.data}
+        return {'confirmed':self.data,'death':None}
     
     
     def dz_mean(self, samples, **args):

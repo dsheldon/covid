@@ -1,7 +1,6 @@
 import jax
 import jax.numpy as np
 from jax.random import PRNGKey
-from jax.config import config; config.update("jax_enable_x64", True)
 
 import numpyro
 import numpyro.distributions as dist
@@ -46,28 +45,24 @@ class SEIRD(SEIRDBase):
                  confirmed_dispersion_est=0.5,
                  death_dispersion_est=0.5,
                  rw_scale = 2e-1,
-                 forecast_rw_scale = 0.0,
+                 forecast_rw_scale = 0,
                  drift_scale = None,
                  num_frozen=0,
                  confirmed=None,
-                 death=None,
-                 num_places=1):
+                 death=None):
 
         '''
         Stochastic SEIR model. Draws random parameters and runs dynamics.
         '''        
         #Hack right now to avoid major refactor
-        confirmed_and_death = confirmed
-        num_places = onp.uint32(num_places)
-        beta_intervention_total =  numpyro.sample("beta_total",
-                               dist.Normal(0,.5))
+        num_places = 2#confirmed.shape[0]
         with numpyro.plate("num_places", num_places): 
   
       # Sample initial number of infected individuals
-             I0 = numpyro.sample("I0", dist.Uniform(0.0, 0.002*N))
-             E0 = numpyro.sample("E0", dist.Uniform(0.0, 0.002*N))
-             H0 = numpyro.sample("H0", dist.Uniform(0.0, 1e-5*N))
-             D0 = numpyro.sample("D0", dist.Uniform(0.0, 1e-5*N))
+             I0 = numpyro.sample("I0", dist.Uniform(0.0, 0.02*N))
+             E0 = numpyro.sample("E0", dist.Uniform(0.0, 0.02*N))
+             H0 = numpyro.sample("H0", dist.Uniform(0.0, 1e-3*N))
+             D0 = numpyro.sample("D0", dist.Uniform(0.0, 1e-3*N))
 
 
         # Sample dispersion parameters around specified values
@@ -89,22 +84,22 @@ class SEIRD(SEIRDBase):
 
              #gamma = 1.0/I_duration_estnumpyro.sample("gamma", 
                                 #dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
-             #det_prob0 = numpyro.sample("det_prob0",
-              #                     dist.Beta(.15 * 100,
-               #                             (1.0-.15) * 100))
-             #beta0 = numpyro.sample("beta0",
-              #                 dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
-             
-             betasp = numpyro.sample("betasp",
-                               dist.Normal(beta_intervention_total,.1))
+
+
+             beta0 = numpyro.sample("beta0",
+                               dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
+
+             det_prob0 = numpyro.sample("det_prob0", 
+                                   dist.Beta(det_prob_est * det_prob_conc,
+                                            (1-det_prob_est) * det_prob_conc))
 
              det_prob_d = numpyro.sample("det_prob_d", 
-                                    dist.Beta(.9 * 100.0,
-                                              (1-.9) * 100.0))
+                                    dist.Beta(.9 * 100,
+                                              (1-.9) * 100))
 
              death_prob = numpyro.sample("death_prob", 
-                                    dist.Beta(.02 * 100.0,
-                                              (1-.02) * 100.0))
+                                    dist.Beta(.01 * 100,
+                                              (1-.01) * 100))
 
              death_rate = numpyro.sample("death_rate", 
                                     dist.Gamma(10.0, 10.0 * 10.0))
@@ -113,10 +108,9 @@ class SEIRD(SEIRDBase):
                  drift = numpyro.sample("drift", dist.Normal(loc=0.0, scale=drift_scale))
              else:
                  drift = 0.0
-        gamma = np.repeat(1.0/I_duration_est,num_places).astype(np.float32)
-        sigma = np.repeat(1.0/E_duration_est,num_places).astype(np.float32)
-        beta0 = np.repeat(3.5,num_places)       
-  #x0 = SEIRDModel.seed(N=N, I=I0, E=E0, H=H0, D=D0)
+        gamma = np.repeat(1.0/I_duration_est,num_places)
+        sigma = np.repeat(1.0/E_duration_est,num_places)
+        #x0 = SEIRDModel.seed(N=N, I=I0, E=E0, H=H0, D=D0)
         x0 = jax.vmap(SEIRDModel.seed)(N, I0, E0, H0, D0)
         numpyro.deterministic("x0", x0)
         NoneType = type(None)
@@ -126,8 +120,8 @@ class SEIRD(SEIRDBase):
            use_obs = False
         # Split observations into first and rest
         if use_obs:
-            confirmed= confirmed_and_death[:,:,0]
-            death = confirmed_and_death[:,:,1]
+            confirmed= np.transpose(confirmed[0,:,:]).astype(np.float32)
+            death = np.transpose(death[1,:,:]).astype(np.float32)
 
             confirmed0, confirmed = confirmed[:,0], np.diff(confirmed[:,1:],axis=1)
             death0, death = death[:,0], np.diff(death[:,1:],axis=1)
@@ -136,7 +130,7 @@ class SEIRD(SEIRDBase):
             death0, death = None, None 
         # First observation
         with numpyro.handlers.scale(scale_factor=0.5):
-            y0 = observe_normal("dy0", x0[:,6], 0.1, confirmed_dispersion, obs=confirmed0)
+            y0 = observe_normal("dy0", x0[:,6], det_prob0, confirmed_dispersion, obs=confirmed0)
             
         with numpyro.handlers.scale(scale_factor=2.0):
             z0 = observe_normal("dz0", x0[:,5], det_prob_d, death_dispersion, obs=death0)
@@ -146,20 +140,19 @@ class SEIRD(SEIRDBase):
                   gamma, 
                   rw_scale, 
                   drift, 
-                  .5, 
+                  det_prob0, 
                   confirmed_dispersion, 
                   death_dispersion,
                   death_prob, 
                   death_rate, 
-                  det_prob_d,betasp)
+                  det_prob_d)
 
         beta, det_prob, x, y, z = self.dynamics(T, 
                                                 params, 
                              	                   x0,
                                                 num_frozen = num_frozen,
                                                 confirmed = confirmed,
-                                                death = death,
-                                                 num_places = num_places)
+                                                death = death)
 
         x = np.concatenate((x0[:,None,:], x), axis=1)
         y = np.concatenate((y0[:,None], y), axis=1)
@@ -176,12 +169,11 @@ class SEIRD(SEIRDBase):
                       death_dispersion,
                       death_prob, 
                       death_rate, 
-                      det_prob_d,
-                      betasp)
+                      det_prob_d)
 
             beta_f, det_rate_rw_f, x_f, y_f, z_f = self.dynamics(T_future+1, 
                                                                  params, 
-                                                                 x[:,-1,:], num_places = num_places,
+                                                                 x[:,-1,:],
                                                                  suffix="_future")
 
             x = np.concatenate((x, x_f), axis=1)
@@ -191,7 +183,7 @@ class SEIRD(SEIRDBase):
         return beta, x, y, z, det_prob, death_prob
     
     
-    def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, num_places=1, suffix=""):
+    def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, suffix=""):
         '''Run SEIRD dynamics for T time steps'''
 
         beta0, \
@@ -204,9 +196,9 @@ class SEIRD(SEIRDBase):
         death_dispersion, \
         death_prob, \
         death_rate, \
-        det_prob_d,\
-        betasp = params
+        det_prob_d = params
 
+        num_places= beta0.shape
         sigma = sigma[:,None]
         gamma = gamma[:,None]
         death_rate = death_rate[:,None]
@@ -215,31 +207,18 @@ class SEIRD(SEIRDBase):
         confirmed_dispersion = confirmed_dispersion[:,None]
         death_dispersion = death_dispersion[:,None]
         
-        with numpyro.plate("places", num_places):
+        with numpyro.plate("places", 2):
             rw = numpyro.sample("rw" + suffix,
                                 ExponentialRandomWalk(loc = 1.0,
-                                                      scale = rw_scale/4,
+                                                      scale = rw_scale,
                                                       drift = 0.0, 
                                                       num_steps = T-1))  
-            #det_prob = numpyro.sample("det_prob" + suffix,
-             #                     LogisticRandomWalk(loc=0.1, 
-              #                                       scale=rw_scale, 
-               #                                     drift=0.0,
-                #                                     num_steps=T-2))
-            det_prob_phase_1 = numpyro.sample("det_prob_phase_1"+suffix,dist.Beta(.1 * 1000.0,
-                                              (1-.1) * 1000.0))
-            det_prob_phase_2 = numpyro.sample("det_prob_phase_2"+suffix,dist.Beta(.2 * 1000.0,
-                                              (1-.2) * 1000.0))
-            det_prob_phase_3 = numpyro.sample("det_prob_phase_3"+suffix,dist.Beta(.4 * 1000.0,
-                                              (1-.4) * 1000.0))
-
-        det_prob = np.concatenate([ np.repeat(det_prob_phase_1[:,None],7,axis=1) ,np.repeat(det_prob_phase_2[:,None],7,axis=1),np.repeat(det_prob_phase_3[:,None],T-2-14,axis=1)] ,axis=1)
-        
-        covariates = onp.zeros((num_places,T-1))
-        covariates[:,15:] = 1.
-        
-        beta = beta0[:,None]* rw 
-        beta = beta*np.exp(betasp[:,None])*covariates 
+            det_prob = numpyro.sample("det_prob" + suffix,
+                                  LogisticRandomWalk(loc=0.3, 
+                                                     scale=rw_scale, 
+                                                     drift=0.0,
+                                                     num_steps=T-2))
+        beta = beta0[:,None]* rw
         apply_model = lambda x0, beta, sigma, gamma, death_prob, death_rate: SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
         x = jax.vmap(apply_model)(x0, beta, sigma, gamma, death_prob, death_rate)
         x = x[:,1:,:] # drop first time step from result (duplicates initial value)
