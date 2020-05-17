@@ -1,6 +1,8 @@
 import jax
 import jax.numpy as np
 
+import numpy as onp
+
 import numpyro
 import numpyro.distributions as dist
 
@@ -31,6 +33,17 @@ def BinomialApprox(n, p, conc=None):
         dist.Beta(a, b),
         dist.transforms.AffineTransform(loc = 0, scale = n)
     )
+
+
+def frozen_random_walk(name, num_steps=100, num_frozen=10):
+
+    # last random value is repeated frozen-1 times
+    num_random = min(max(0, num_steps - num_frozen), num_steps)
+    num_frozen = num_steps - num_random
+
+    rw = numpyro.sample(name, dist.GaussianRandomWalk(num_steps=num_random))
+    rw = np.concatenate((rw, np.repeat(rw[-1], num_frozen)))    
+    return rw
 
 
 def ExponentialRandomWalk(loc=1., scale=1e-2, drift=0., num_steps=100):
@@ -146,9 +159,9 @@ def observe_nb2(name, latent, det_prob, dispersion, obs=None):
         mask = np.isfinite(obs) & (obs >= 0.0)
         obs = np.where(mask, obs, 0.0)
         
-    if np.any(mask):
+    if np.any(np.logical_not(mask)):
         warnings.warn('Some observed values are invalid')
-        
+                
     det_prob = np.broadcast_to(det_prob, latent.shape)
 
     mean = det_prob * latent
@@ -167,6 +180,58 @@ def observe_nb2(name, latent, det_prob, dispersion, obs=None):
 Data handling within model
 ************************************************************
 """
+
+def clean_daily_obs(obs, radius=2):
+    '''Clean daily observations to fix negative elements'''
+    
+    # This searches for a small window containing the negative element
+    # whose sum is non-negative, then sets each element in the window
+    # to the same value to preserve the sum. This ensures that cumulative
+    # sums of the daily time series are preserved to the extent possible.
+    # (They only change inside the window, over which the cumulative sum is
+    # linear.)
+    
+    orig_obs = obs
+    
+    obs = onp.array(obs)
+    bad = onp.argwhere(obs < 0)
+
+    for ind in bad:
+        
+        ind = ind[0]
+        
+        if obs[ind] >= 0:
+            # it's conceivable the problem was fixed when
+            # we cleaned another bad value
+            continue
+        
+        left = ind - radius
+        right = ind + radius + 1
+        tot = onp.sum(obs[left:right])
+
+        while tot < 0 and (left >= 0 or right <= len(obs)):
+            left -= 1
+            right += 1
+            tot = onp.sum(obs[left:right])
+                
+        if tot < 0:
+            raise ValueError("Couldn't clean data")
+        
+        n = len(obs[left:right])
+        
+        avg = tot // n
+        rem = tot % n
+
+        obs[left:right] = avg
+        obs[left:(left+rem)] += 1
+            
+    assert(orig_obs.sum() == obs.sum())
+    
+    return obs
+
+# def clean_daily_obs(obs):
+#     return obs
+
 
 def get_future_data(data, T, offset=1):
     '''Projects data frame with (place, time) MultiIndex into future by

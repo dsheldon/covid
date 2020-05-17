@@ -6,21 +6,11 @@ import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
-from .util import observe, observe_nb2, ExponentialRandomWalk, LogisticRandomWalk
+from .util import observe, observe_nb2, ExponentialRandomWalk, LogisticRandomWalk, frozen_random_walk, clean_daily_obs
 from .base import SEIRDBase, getter
 
 import numpy as onp
 
-
-def frozen_random_walk(name, num_steps=100, num_frozen=10):
-
-    # last random value is repeated frozen-1 times
-    num_random = min(max(0, num_steps - num_frozen), num_steps)
-    num_frozen = num_steps - num_random
-
-    rw = numpyro.sample(name, dist.GaussianRandomWalk(num_steps=num_random))
-    rw = np.concatenate((rw, np.repeat(rw[-1], num_frozen)))    
-    return rw
 
 """
 ************************************************************
@@ -38,8 +28,8 @@ class SEIRD(SEIRDBase):
                  I_duration_est = 2.0,
                  R0_est = 3.0,
                  beta_shape = 1,
-                 sigma_shape = 5,
-                 gamma_shape = 8,
+                 sigma_shape = 100,
+                 gamma_shape = 100,
                  det_prob_est = 0.3,
                  det_prob_conc = 50,
                  confirmed_dispersion=0.3,
@@ -114,9 +104,17 @@ class SEIRD(SEIRDBase):
         numpyro.deterministic("x0", x0)
 
         # Split observations into first and rest
-        confirmed0, confirmed = (None, None) if confirmed is None else (confirmed[0], np.diff(confirmed))
-        death0, death = (None, None) if death is None else (death[0], np.diff(death))
-        
+        if confirmed is None:
+            confirmed0, confirmed = (None, None)
+        else:
+            confirmed0 = confirmed[0]
+            confirmed = clean_daily_obs(onp.diff(confirmed))
+            
+        if death is None:
+            death0, death = (None, None)
+        else: 
+            death0 = death[0]
+            death = clean_daily_obs(onp.diff(death))
         
         # First observation
         with numpyro.handlers.scale(scale_factor=0.5):

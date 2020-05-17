@@ -6,21 +6,11 @@ import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
-from .util import observe, ExponentialRandomWalk, LogisticRandomWalk
+from .util import observe, ExponentialRandomWalk, LogisticRandomWalk, frozen_random_walk
 from .base import SEIRDBase
 
 import numpy as onp
 
-
-def frozen_random_walk(name, num_steps=100, num_frozen=10):
-
-    # last random value is repeated frozen-1 times
-    num_random = min(max(0, num_steps - num_frozen), num_steps)
-    num_frozen = num_steps - num_random
-
-    rw = numpyro.sample(name, dist.GaussianRandomWalk(num_steps=num_random))
-    rw = np.concatenate((rw, np.repeat(rw[-1], num_frozen)))    
-    return rw
 
 """
 ************************************************************
