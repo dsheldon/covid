@@ -38,7 +38,7 @@ class SEIRD(SEIRDBase):
                  E_duration_est = 4.0,
                  I_duration_est = 2.0,
                  R0_est = 4,
-                 beta_shape = 1000,
+                 beta_shape = 500,
                  sigma_shape = 5,
                  gamma_shape = 8,
                  det_prob_est = 0.3,
@@ -51,7 +51,8 @@ class SEIRD(SEIRDBase):
                  num_frozen=0,
                  confirmed=None,
                  death=None,
-                 num_places=1):
+                 num_places=1,
+	          cov_dat=None):
 
         '''
         Stochastic SEIR model. Draws random parameters and runs dynamics.
@@ -59,6 +60,10 @@ class SEIRD(SEIRDBase):
         #Hack right now to avoid major refactor
         confirmed_and_death = confirmed
         num_places = onp.uint32(num_places)
+        
+        print (cov_dat)
+        sys.exit()
+
         beta_intervention_total =  numpyro.sample("beta_total",
                                dist.Normal(0,.5))
         with numpyro.plate("num_places", num_places): 
@@ -84,14 +89,6 @@ class SEIRD(SEIRDBase):
 
         
         # Sample parameters
-             #sigma = 1.0/E_duration_estnumpyro.sample("sigma", 
-                               #dist.Gamma(sigma_shape, sigma_shape * E_duration_est))
-
-             #gamma = 1.0/I_duration_estnumpyro.sample("gamma", 
-                                #dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
-             #det_prob0 = numpyro.sample("det_prob0",
-              #                     dist.Beta(.15 * 100,
-               #                             (1.0-.15) * 100))
              beta0 = numpyro.sample("beta0",
                                dist.Gamma(beta_shape, beta_shape * I_duration_est/R0_est))
              
@@ -104,7 +101,7 @@ class SEIRD(SEIRDBase):
 
              death_prob = numpyro.sample("death_prob", 
                                     dist.Beta(.015 * 1000.0,
-                                              (1-.02) * 1000.0))
+                                              (1-.015) * 1000.0))
 
              death_rate = numpyro.sample("death_rate", 
                                     dist.Gamma(1000.0, 1000.0 * 10.0))

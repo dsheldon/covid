@@ -21,7 +21,6 @@ if __name__ == "__main__":
     config = getattr(configs, args.config)
 
     data = util.load_data()
-    
     util.run_place(data,
                    args.place,
                    start=args.start,
