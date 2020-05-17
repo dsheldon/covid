@@ -197,6 +197,7 @@ def run_place(data,
          )
     else:
           #hack to grab data dimension
+
          place_data = data["NY"]['data'][start:end]
          T = len(place_data)
          #places = ["AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DC", "DE", "FL", "GA", 
@@ -204,7 +205,9 @@ def run_place(data,
          # "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", 
           #"NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
           #"SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
-         places = ["NY","MA","RI"]
+         places = ["NY","MA"]#,"RI"]
+
+
          place_data_total = onp.zeros((len(places),T,2))
          N = onp.zeros((len(places)))
          place_idx = 0
