@@ -63,16 +63,19 @@ class SEIRD(SEIRDBase):
 
 
         # Sample dispersion parameters around specified values
-        confirmed_dispersion = numpyro.sample("confirmed_dispersion", 
-                                              dist.TruncatedNormal(low=0.,
-                                                                   loc=confirmed_dispersion, 
-                                                                   scale=confirmed_dispersion))
-
 
         death_dispersion = numpyro.sample("death_dispersion", 
-                                           dist.TruncatedNormal(low=0.,
+                                           dist.TruncatedNormal(low=0.1,
                                                                 loc=death_dispersion, 
-                                                                scale=death_dispersion))
+                                                                scale=0.15))
+
+
+        confirmed_dispersion = numpyro.sample("confirmed_dispersion", 
+                                              dist.TruncatedNormal(low=0.1,
+                                                                   loc=confirmed_dispersion, 
+                                                                   scale=0.15))
+
+
 
         
         # Sample parameters
