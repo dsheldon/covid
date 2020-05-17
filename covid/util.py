@@ -29,6 +29,8 @@ from .compartment import SEIRModel
 
 from tqdm import tqdm
 
+import warnings
+
 
 """
 ************************************************************
@@ -424,8 +426,9 @@ def score_forecast(forecast_date,
                                    place,
                                    model_type=model_type,
                                    prefix=prefix)
-        except:
+        except Exception as e:
             warnings.warn(f'Could not score {place}')
+            print(e)
         else:
             details = details.append(place_df)
 
