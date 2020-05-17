@@ -49,6 +49,7 @@ def load_world_data():
     world_pop_data = world_pop_data.set_index("Country")
         
     country_names_valid = set(country_names) & set(world_pop_data.index) 
+    print (set(country_names))
     world_data = {
         k: {'data' : world[k].tot, 
             'pop' : world_pop_data.loc[k]['Year_2016'],
@@ -56,7 +57,8 @@ def load_world_data():
         for k in country_names_valid
     }
 
-    
+    world_data['US'] = {'pop': 328000000,'data':world['US'].tot,'name':'US'}
+      
     return world_data
 
 
@@ -184,7 +186,6 @@ def run_place(data,
     numpyro.enable_x64()
 
     print(f"Running {place} (start={start}, end={end})")
-    
     place_data = data[place]['data'][start:end]
     T = len(place_data)
 
