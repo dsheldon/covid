@@ -37,7 +37,9 @@ class Model():
         'y': 'confirmed',
         'z': 'deaths',
         'dy': 'daily confirmed',
-        'dz': 'daily deaths'
+        'dz': 'daily deaths',
+        'mean_dy': 'daily confirmed (mean)',
+        'mean_dz': 'daily deaths (mean)'
     }
             
     
@@ -172,11 +174,14 @@ class Model():
                      T=None,
                      ax=None,          
                      legend=True,
-                     forecast=False):
+                     forecast=False,
+                     n_samples=0,
+                     interval=80):
         '''
         Plotting method for SIR-type models. 
         '''
 
+        
         ax = plt.axes(ax)
 
         T_data = self.horizon(samples, forecast=forecast)        
@@ -185,8 +190,11 @@ class Model():
         fields = {f: 0.0 + self.get(samples, f, forecast=forecast)[:,:T] for f in plot_fields}
         names = {f: self.names[f] for f in plot_fields}
                 
-        medians = {names[f]: np.median(v, axis=0) for f, v in fields.items()}    
-        pred_intervals = {names[f]: np.percentile(v, (10, 90), axis=0) for f, v in fields.items()}
+        medians = {names[f]: np.median(v, axis=0) for f, v in fields.items()}
+
+        low=(100.-interval)/2
+        high=100.-low
+        pred_intervals = {names[f]: np.percentile(v, (low, high), axis=0) for f, v in fields.items()}
 
         t = pd.date_range(start=start, periods=T, freq='D')
 
@@ -196,6 +204,14 @@ class Model():
         df = pd.DataFrame(index=t, data=medians)
         df.plot(ax=ax, legend=legend)
         median_max = df.max().values
+
+        # Plot samples if requested
+        if n_samples > 0:
+            colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+            for i, f in enumerate(fields):
+                df = pd.DataFrame(index=t, data=fields[f][:n_samples,:].T)
+                df.plot(ax=ax, legend=False, alpha=0.2)
+                
 
         # Plot prediction intervals
         pi_max = 10
@@ -214,7 +230,8 @@ class Model():
                       T_future=7*4,
                       ax=None,
                       obs=None,
-                      scale='lin'):
+                      scale='lin',
+                      **kwargs):
 
         ax = plt.axes(ax)
         
@@ -232,7 +249,8 @@ class Model():
                                                  ax=ax,
                                                  forecast=True,
                                                  legend=False,
-                                                 plot_fields=[variable])
+                                                 plot_fields=[variable],
+                                                 **kwargs)
         
         median_max = max(median_max1, median_max2)
         pi_max = max(pi_max1, pi_max2)
