@@ -49,7 +49,7 @@ def load_world_data():
     world_pop_data = world_pop_data.set_index("Country")
         
     country_names_valid = set(country_names) & set(world_pop_data.index) 
-    print (set(country_names))
+    
     world_data = {
         k: {'data' : world[k].tot, 
             'pop' : world_pop_data.loc[k]['Year_2016'],
@@ -416,8 +416,8 @@ def score_forecast(forecast_date,
 
     
     if places is None:
-        places = data.keys()
-    
+        places = list(data.keys())
+        places = ['US'] + places
     # Assemble performance metrics each place and time horizon
     details = pd.DataFrame()
     

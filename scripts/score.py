@@ -7,11 +7,15 @@ import pandas as pd
 from pathlib import Path
 
 data = util.load_state_data()
-
+US_data = util.load_data()
+US_data = US_data['US']
+data['US'] = US_data
 config_names=['fit_dispersion']
-forecast_dates = ['2020-04-18', '2020-04-25', '2020-05-03', '2020-05-10']
+#forecast_dates = ['2020-04-18', '2020-04-25', '2020-05-03', '2020-05-10']
+
+forecast_dates = ['2020-05-03']
 eval_date = '2020-05-16'
-root='results1'
+root='results'
 
 def write_summary(summary, filename):
     summary = summary.reset_index(drop=True)
