@@ -180,6 +180,7 @@ def run_place(data,
               num_prior_samples = 0,              
               T_future=4*7,
               prefix = "results",
+              resample=None,
               **kwargs):
 
 
@@ -199,6 +200,10 @@ def run_place(data,
     print(" * running MCMC")
     mcmc_samples = model.infer(num_warmup=num_warmup, 
                                num_samples=num_samples)
+
+    if resample is not None:
+        print(" * resampling")
+        mcmc_samples = model.resample(resample=resample, **kwargs)
 
     # Prior samples
     prior_samples = None

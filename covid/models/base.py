@@ -10,6 +10,9 @@ import numpy as onp
 import pandas as pd
 import matplotlib.pyplot as plt
 
+import numpy as onp
+from covid.compartment import SEIRDModel
+
 
 '''Utility to define access method for time varying fields'''
 def getter(f):
@@ -86,7 +89,7 @@ class Model():
     
     
     def prior(self, num_samples=1000, rng_key=PRNGKey(2), **args):
-        
+        '''Draw samples from prior'''
         predictive = Predictive(self, posterior_samples={}, num_samples=num_samples)        
         
         args = dict(self.args, **args) # passed args take precedence        
@@ -96,6 +99,7 @@ class Model():
     
     
     def predictive(self, rng_key=PRNGKey(3), **args):
+        '''Draw samples from in-sample predictive distribution'''
 
         if self.mcmc_samples is None:
             raise RuntimeError("run inference first")
@@ -107,6 +111,8 @@ class Model():
     
     
     def forecast(self, num_samples=1000, rng_key=PRNGKey(4), **args):
+        '''Draw samples from forecast predictive distribution'''
+
         if self.mcmc_samples is None:
             raise RuntimeError("run inference first")
 
@@ -115,6 +121,35 @@ class Model():
         args = dict(self.args, **args)
         return predictive(rng_key, **self.obs, **args)
         
+            
+    def resample(self, percent=90, rw_use_last=1, **kwargs):
+        '''Resample MCMC samples by growth rate'''
+        
+        # TODO: hard-coded for SEIRDModel. Would also 
+        # work for SEIR, but not SIR
+        
+        print("resample rw_use_last:", rw_use_last)
+        
+        
+        beta = self.mcmc_samples['beta']
+        gamma = self.mcmc_samples['gamma']
+        sigma = self.mcmc_samples['sigma']
+        beta_end = beta[:,-rw_use_last:].mean(axis=1)
+
+        growth_rate = SEIRDModel.growth_rate((beta_end, sigma, gamma))
+        
+        top = int(percent/100 * len(growth_rate))
+
+        sorted_inds = onp.argsort(growth_rate)
+        selection = onp.random.randint(top, size=(1000))
+        inds = sorted_inds[selection]
+
+        new_samples = {k: v[inds, ...] for k, v in self.mcmc_samples.items()}
+
+        self.mcmc_samples = new_samples
+        return new_samples
+
+    
     
     """
     ***************************************
@@ -176,7 +211,7 @@ class Model():
                      legend=True,
                      forecast=False,
                      n_samples=0,
-                     interval=80):
+                     intervals=[80]):
         '''
         Plotting method for SIR-type models. 
         '''
@@ -192,13 +227,10 @@ class Model():
                 
         medians = {names[f]: np.median(v, axis=0) for f, v in fields.items()}
 
-        low=(100.-interval)/2
-        high=100.-low
-        pred_intervals = {names[f]: np.percentile(v, (low, high), axis=0) for f, v in fields.items()}
-
         t = pd.date_range(start=start, periods=T, freq='D')
 
         ax.set_prop_cycle(None)
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
         # Plot medians
         df = pd.DataFrame(index=t, data=medians)
@@ -207,18 +239,23 @@ class Model():
 
         # Plot samples if requested
         if n_samples > 0:
-            colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
             for i, f in enumerate(fields):
                 df = pd.DataFrame(index=t, data=fields[f][:n_samples,:].T)
-                df.plot(ax=ax, legend=False, alpha=0.2)
+                df.plot(ax=ax, legend=False, alpha=0.1)
                 
-
         # Plot prediction intervals
         pi_max = 10
-        for pi in pred_intervals.values():
-            ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.1, label='CI')
-            pi_max = np.maximum(pi_max, np.nanmax(pi[1,:]))
+        handles = []
+        for interval in intervals:
+            low=(100.-interval)/2
+            high=100.-low
+            pred_intervals = {names[f]: np.percentile(v, (low, high), axis=0) for f, v in fields.items()}
+            for i, pi in enumerate(pred_intervals.values()):
+                h = ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.15, color=colors[i], label=interval)
+                handles.append(h)
+                pi_max = np.maximum(pi_max, np.nanmax(pi[1,:]))
 
+        
         return median_max, pi_max
     
     
