@@ -27,17 +27,18 @@ class SEIRD(SEIRDBase):
                  E_duration_est = 4.0,
                  I_duration_est = 2.0,
                  R0_est = 3.0,
-                 beta_shape = 1,
-                 sigma_shape = 100,
-                 gamma_shape = 100,
+                 beta_shape = 1.,
+                 sigma_shape = 100.,
+                 gamma_shape = 100.,
                  det_prob_est = 0.3,
-                 det_prob_conc = 50,
+                 det_prob_conc = 50.,
                  confirmed_dispersion=0.3,
                  death_dispersion=0.3,
                  rw_scale = 2e-1,
-                 forecast_rw_scale = 0,
+                 forecast_rw_scale = 0.,
                  drift_scale = None,
                  num_frozen=0,
+                 rw_use_last=1,
                  confirmed=None,
                  death=None):
 
@@ -148,12 +149,12 @@ class SEIRD(SEIRDBase):
 
         if T_future > 0:
 
-            params = (beta[-1], 
+            params = (beta[-rw_use_last:].mean(), 
                       sigma, 
                       gamma, 
                       forecast_rw_scale, 
                       drift, 
-                      det_prob[-1], 
+                      det_prob[-rw_use_last:].mean(),
                       confirmed_dispersion, 
                       death_dispersion,
                       death_prob, 
