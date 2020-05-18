@@ -122,14 +122,11 @@ class Model():
         return predictive(rng_key, **self.obs, **args)
         
             
-    def resample(self, percent=90, rw_use_last=1, **kwargs):
+    def resample(self, low=0, high=90, rw_use_last=1, **kwargs):
         '''Resample MCMC samples by growth rate'''
         
         # TODO: hard-coded for SEIRDModel. Would also 
         # work for SEIR, but not SIR
-        
-        print("resample rw_use_last:", rw_use_last)
-        
         
         beta = self.mcmc_samples['beta']
         gamma = self.mcmc_samples['gamma']
@@ -138,10 +135,11 @@ class Model():
 
         growth_rate = SEIRDModel.growth_rate((beta_end, sigma, gamma))
         
-        top = int(percent/100 * len(growth_rate))
+        low = int(low/100 * len(growth_rate))
+        high = int(high/100 * len(growth_rate))
 
         sorted_inds = onp.argsort(growth_rate)
-        selection = onp.random.randint(top, size=(1000))
+        selection = onp.random.randint(low, high, size=(1000))
         inds = sorted_inds[selection]
 
         new_samples = {k: v[inds, ...] for k, v in self.mcmc_samples.items()}
