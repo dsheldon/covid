@@ -211,7 +211,7 @@ class Model():
                      legend=True,
                      forecast=False,
                      n_samples=0,
-                     intervals=[80]):
+                     intervals=[50, 80, 95]):
         '''
         Plotting method for SIR-type models. 
         '''
@@ -251,7 +251,7 @@ class Model():
             high=100.-low
             pred_intervals = {names[f]: np.percentile(v, (low, high), axis=0) for f, v in fields.items()}
             for i, pi in enumerate(pred_intervals.values()):
-                h = ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.15, color=colors[i], label=interval)
+                h = ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.1, color=colors[i], label=interval)
                 handles.append(h)
                 pi_max = np.maximum(pi_max, np.nanmax(pi[1,:]))
 
