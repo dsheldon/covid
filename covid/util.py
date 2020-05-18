@@ -49,7 +49,7 @@ def load_world_data():
     world_pop_data = world_pop_data.set_index("Country")
         
     country_names_valid = set(country_names) & set(world_pop_data.index) 
-    print (set(country_names))
+    
     world_data = {
         k: {'data' : world[k].tot, 
             'pop' : world_pop_data.loc[k]['Year_2016'],
@@ -416,8 +416,7 @@ def score_forecast(forecast_date,
 
     
     if places is None:
-        places = data.keys()
-    
+        places = list(data.keys())
     # Assemble performance metrics each place and time horizon
     details = pd.DataFrame()
     
@@ -448,21 +447,34 @@ def score_forecast(forecast_date,
         horizon = int((date-pd.to_datetime(forecast_date))/pd.Timedelta("1d"))
         rows = details.loc[date]
         
-        summary.loc[date, 'horizon'] = horizon
+        if len(places) > 1:
+            summary.loc[date, 'horizon'] = horizon
 
         # Compute signer error / bias
-        summary.loc[date, 'signed_err'] = rows['err'].mean()
+            summary.loc[date, 'signed_err'] = rows['err'].mean()
         
         # Compute MAE
-        summary.loc[date, 'MAE'] = rows['err'].abs().mean()
+            summary.loc[date, 'MAE'] = rows['err'].abs().mean()
         
         # Compute avg. log-score
-        summary.loc[date, 'log_score'] = rows['log_score'].mean()
+            summary.loc[date, 'log_score'] = rows['log_score'].mean()
         
         # Compute KS statistic
-        ks, pval = scipy.stats.kstest(rows['quantile'], 'uniform')
-        summary.loc[date,'KS'] = ks
-        summary.loc[date,'KS_pval'] = pval
+            ks, pval = scipy.stats.kstest(rows['quantile'], 'uniform')
+            summary.loc[date,'KS'] = ks
+            summary.loc[date,'KS_pval'] = pval
+
+        else:
+            summary.loc[date, 'horizon'] = horizon
+
+        # Compute signer error / bias
+            summary.loc[date, 'signed_err'] = rows['err']
+
+        # Compute MAE
+            summary.loc[date, 'MAE'] = rows['err']
+
+        # Compute avg. log-score
+            summary.loc[date, 'log_score'] = rows['log_score']
         
     summary['forecast_date'] = forecast_date
     
