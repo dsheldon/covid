@@ -59,21 +59,23 @@ class SEIRD(SEIRDBase):
         # exponential growth model 
  
         rw_add =  numpyro.sample("rw_add",dist.GaussianRandomWalk(scale=100, num_steps=T))
-        rw2_add =  numpyro.sample("rw2_add",dist.GaussianRandomWalk(scale=100, num_steps=T))
+        rw2_add =  numpyro.sample("rw2_add",dist.GaussianRandomWalk(scale=10, num_steps=T))
 
-        exp_coef =  numpyro.sample("exp_coef",dist.Normal(0,1))
-        exp_coef_d =  numpyro.sample("exp_coef_d",dist.Normal(0,1))
+        exp_coef =  numpyro.sample("exp_coef",dist.Normal(0,100))
+        exp_coef_d =  numpyro.sample("exp_coef_d",dist.Normal(0,100))
    
 
-        exp_coef_int =  numpyro.sample("exp_coef_int",dist.Normal(0,1))
-        exp_coef_d_int =  numpyro.sample("exp_coef_d_int",dist.Normal(0,1))
+        exp_coef_int =  numpyro.sample("exp_coef_int",dist.Normal(0,100))
+        exp_coef_d_int =  numpyro.sample("exp_coef_d_int",dist.Normal(0,100))
 
-        confirmed_hat = exp_coef_int + exp_coef*np.arange(T)
-        death_hat = exp_coef_d_int + exp_coef_d*np.arange(T)
+        confirmed_hat = exp_coef_int + exp_coef*rw_add*np.arange(T)
+        death_hat = exp_coef_d_int + exp_coef_d*rw2_add*np.arange(T)
 
         # First observation
-        var_c = numpyro.sample("var_c",dist.Gamma(1,1))
-        var_d = numpyro.sample("var_d",dist.Gamma(1,1))
+        var_c = numpyro.sample("var_c",dist.Normal(0,10))
+        var_d = numpyro.sample("var_d",dist.Normal(0,10))
+        var_c = np.exp(var_c)
+        var_d = np.exp(var_d)
         with numpyro.handlers.scale(scale_factor=0.5):
             y0 = numpyro.sample("y0" , dist.Normal(confirmed_hat[0], var_c),obs = confirmed0)
             numpyro.deterministic("mean_y0"  , y0)
@@ -91,8 +93,8 @@ class SEIRD(SEIRDBase):
         z = np.append(z0, z)
         if T_future > 0:
         
-             confirmed_hat = exp_coef_int + exp_coef*np.arange(T,T_future)
-             death_hat = exp_coef_d_int + exp_coef_d*np.arange(T,T_future)
+             confirmed_hat = exp_coef_int + exp_coef*rw_add[-1]*np.arange(T,T_future)
+             death_hat = exp_coef_d_int + exp_coef_d*rw2_add[-1]*np.arange(T,T_future)
              with numpyro.handlers.scale(scale_factor=0.5):
                  y_f = numpyro.sample("y"+"_future" , dist.Normal(confirmed_hat[1:], 1),obs = confirmed)
                  numpyro.deterministic("mean_y_future"  ,y_f)
