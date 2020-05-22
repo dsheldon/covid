@@ -8,7 +8,7 @@ import numpyro
 import numpyro.distributions as dist
 
 from ..compartment import SEIRDModel
-from .util import observe, observe_nb2, observe_normal, ExponentialRandomWalk, LogisticRandomWalk, frozen_random_walk, clean_daily_obs
+from .util import get_future_data,observe, observe_nb2, observe_normal, ExponentialRandomWalk, LogisticRandomWalk, frozen_random_walk, clean_daily_obs
 from .base import SEIRDBase, getter
 
 import numpy as onp
@@ -57,49 +57,71 @@ class SEIRD(SEIRDBase):
 
 
         # exponential growth model 
- 
-        rw_add =  numpyro.sample("rw_add",dist.GaussianRandomWalk(scale=100, num_steps=T))
-        rw2_add =  numpyro.sample("rw2_add",dist.GaussianRandomWalk(scale=10, num_steps=T))
 
-        exp_coef =  numpyro.sample("exp_coef",dist.Normal(0,100))
-        exp_coef_d =  numpyro.sample("exp_coef_d",dist.Normal(0,100))
-   
 
+
+        #exp_coef =  numpyro.sample("exp_coef",dist.Normal(0,100))
+        #exp_coef_d =  numpyro.sample("exp_coef_d",dist.Normal(0,100))
+
+        #rw_scale=.005
+        #rw_add =  numpyro.sample("rw_add",dist.GaussianRandomWalk(scale=rw_scale, num_steps=T))
+
+        #rw2_add =  numpyro.sample("rw2_add",dist.GaussianRandomWalk(scale=rw_scale, num_steps=T))
+        #rw_add = rw_add + exp_coef
+        #rw2_add = rw2_add +exp_coef_d
         exp_coef_int =  numpyro.sample("exp_coef_int",dist.Normal(0,100))
         exp_coef_d_int =  numpyro.sample("exp_coef_d_int",dist.Normal(0,100))
-
-        confirmed_hat = exp_coef_int + exp_coef*rw_add*np.arange(T)
-        death_hat = exp_coef_d_int + exp_coef_d*rw2_add*np.arange(T)
+        
+        R0_glm_conf = GLM("1 + state_of_emergency + shelter_in_place + Q('non-contact_school')", 
+                 place_data, 
+                 log_link,
+                 partial(Gamma, var=1),
+                 prior = dist.Normal(0, 1),
+                 guess=.2,
+                 name="R0")
+        R0_conf = R0_glm_conf.sample(shape=(-1))[0]
+        R0_glm_d = GLM("1 + state_of_emergency + shelter_in_place + Q('non-contact_school') + cr(t,df=3)",
+                 place_data,
+                 log_link,
+                 partial(Gamma, var=1),
+                 prior = dist.Normal(0, 1),
+                 guess=.2,
+                 name="R0d")
+        R0_d = R0_glm_d.sample(shape=(-1))[0]
+        confirmed_hat =R0_conf#rw_add*np.arange(T)
+        death_hat = R0_d #rw2_add*np.arange(T)
 
         # First observation
         var_c = numpyro.sample("var_c",dist.Normal(0,10))
         var_d = numpyro.sample("var_d",dist.Normal(0,10))
         var_c = np.exp(var_c)
         var_d = np.exp(var_d)
-        with numpyro.handlers.scale(scale_factor=0.5):
+        with numpyro.handlers.scale(scale_factor=1.0):
             y0 = numpyro.sample("y0" , dist.Normal(confirmed_hat[0], var_c),obs = confirmed0)
             numpyro.deterministic("mean_y0"  , y0)
-        with numpyro.handlers.scale(scale_factor=2.0):
+        with numpyro.handlers.scale(scale_factor=1.0):
             z0 = numpyro.sample("z0" , dist.Normal(death_hat[0],var_d ), obs = death0)
             numpyro.deterministic("mean_z0"  , z0)
 
-        with numpyro.handlers.scale(scale_factor=0.5):
+        with numpyro.handlers.scale(scale_factor=1.0):
             y = numpyro.sample("y" , dist.Normal(confirmed_hat[1:], var_c),obs = confirmed)
             numpyro.deterministic("mean_y"  , y)
-        with numpyro.handlers.scale(scale_factor=2.0):
+        with numpyro.handlers.scale(scale_factor=1.0):
             z = numpyro.sample("z" , dist.Normal(death_hat[1:],var_d ), obs = death)        
             numpyro.deterministic("mean_z"  , z)
         y = np.append(y0, y)
         z = np.append(z0, z)
         if T_future > 0:
-        
-             confirmed_hat = exp_coef_int + exp_coef*rw_add[-1]*np.arange(T,T_future)
-             death_hat = exp_coef_d_int + exp_coef_d*rw2_add[-1]*np.arange(T,T_future)
-             with numpyro.handlers.scale(scale_factor=0.5):
-                 y_f = numpyro.sample("y"+"_future" , dist.Normal(confirmed_hat[1:], 1),obs = confirmed)
+       
+             future_data = get_future_data(place_data, T_future-1)
+             confirmed_hat_future = R0_glm_conf.sample(future_data, name="R0_future", shape=(-1))[0] 
+             death_hat_future = R0_glm_d.sample(future_data, name="R0_future_d", shape=(-1))[0]
+
+             with numpyro.handlers.scale(scale_factor=1.0):
+                 y_f = numpyro.sample("y"+"_future" , dist.Normal(confirmed_hat_future, var_c))
                  numpyro.deterministic("mean_y_future"  ,y_f)
-             with numpyro.handlers.scale(scale_factor=2.0):
-                 z_f = numpyro.sample("z" +"_future" , dist.Normal(death_hat[1:],1 ), obs = death) 
+             with numpyro.handlers.scale(scale_factor=1.0):
+                 z_f = numpyro.sample("z" +"_future" , dist.Normal(death_hat_future,var_d)) 
                  numpyro.deterministic("mean_z_future"  , z_f)
              y = np.append(y, y_f)
              z = np.append(z, z_f)
