@@ -51,25 +51,12 @@ class SEIRD(SEIRDBase):
 
         # Sample dispersion parameters around specified values
 
-        death_dispersion = numpyro.sample("death_dispersion", 
-                                           dist.TruncatedNormal(low=0.1,
-                                                                loc=death_dispersion, 
-                                                                scale=0.15))
 
 
 
 
-        rw = numpyro.sample("rw",dist.GaussianRandomWalk(scale=.1, num_steps=T))
-        rw = (1+rw)
-        beta0 = numpyro.sample("beta",
-                               dist.Normal(1,1))
+        rw = numpyro.sample("rw",dist.GaussianRandomWalk(scale=100, num_steps=T))
         D0 = numpyro.sample("D0", dist.Normal(.000002*N,1000))	
-        sigma = numpyro.sample("sigma", 
-                               dist.Gamma(sigma_shape, sigma_shape * E_duration_est))
-  
- 
-        gamma = numpyro.sample("gamma", 
-                                dist.Gamma(gamma_shape, gamma_shape * I_duration_est))
 
        # Sample parameters
             
@@ -77,29 +64,29 @@ class SEIRD(SEIRDBase):
             death = None
             death0 = None
         else: 
-            death = clean_daily_obs(onp.diff(death))
+            death = clean_daily_obs(death)
 
             death0 = death[0]
          # First observation
-        z_hat = np.exp(np.cumsum(np.log(beta0*rw)) + np.log(D0))
+        z_hat = np.exp(np.cumsum(rw) + np.log(D0))
 
-        z0 = observe_normal("dz0",z_hat[0] , .95, death_dispersion, obs = death0)
-        y0 = observe_normal("dy0",z_hat[0] , .95, death_dispersion, obs = death0) 
-        z = observe_normal("dz",np.diff(z_hat) , .95, death_dispersion, obs = death)  
-        y = observe_normal("dy",np.diff(z_hat) , .95, death_dispersion, obs = death)
+        z0 = observe_normal("z0",z_hat[0] , .95, death_dispersion, obs = death0)
+        y0 = observe_normal("y0",z_hat[0] , .95, death_dispersion, obs = death0) 
+        z = observe_normal("z",z_hat , .95, death_dispersion, obs = death)  
+        y = observe_normal("y",z_hat , .95, death_dispersion, obs = death)
         z= np.append(z0,z)
         y=np.append(y0,y)
         if (T_future >0):
 
-            z_hat_future =np.exp(np.cumsum(np.log(beta0*np.repeat(rw[-1],T_future))) + np.log(D0)) 
+            z_hat_future =np.exp(np.cumsum(np.repeat(rw[-1],T_future)) + np.log(D0)) 
 
-            z_future = observe_normal("dz_future",np.diff(z_hat_future) , .95, death_dispersion, obs = death)
+            z_future = observe_normal("z_future",z_hat_future , .95, death_dispersion, obs = death)
 
-            y_future = observe_normal("dy_future",np.diff(z_hat_future) , .95, death_dispersion, obs = death)
+            y_future = observe_normal("y_future",z_hat_future , .95, death_dispersion, obs = death)
             z = np.append(z,z_future)
             y = np.append(y,y_future)
 
-        return beta0, None, y,z, None, None
+        return None, None, y,z, None, None
 
     
     
@@ -107,36 +94,3 @@ class SEIRD(SEIRDBase):
     
     
 
-    dy = getter('dy')
-    dz = getter('dz')
-    
-    def y0(self, **args):
-        return self.z0(**args)
-
-    
-    def y(self, samples, **args):
-        '''Get cumulative cases from incident ones'''
-        
-        dy = self.dy(samples, **args)
-        
-        y0 = np.zeros(dy.shape[0])
-        if args.get('forecast'):
-            y0 = self.y(samples, forecast=False)[:,-1]
- 
-        return y0[:,None] + onp.cumsum(dy, axis=1)
-
-
-    def z0(self, **args):
-        return self.z0(**args)
-
-    
-    def z(self, samples, **args):
-        '''Get cumulative deaths from incident ones'''
-        
-        dz = self.dz(samples, **args)
-        
-        z0 = np.zeros(dz.shape[0])
-        if args.get('forecast'):
-            z0 = self.z(samples, forecast=False)[:,-1]
- 
-        return z0[:,None] + onp.cumsum(dz, axis=1)
