@@ -44,8 +44,7 @@ def load_us():
     def loadData(fileName, columnName):
         data = pd.read_csv(baseURL + fileName)
         return (data)
-    confirmed = loadData(
-    "time_series_covid19_confirmed_US.csv", "confirmed")
+    confirmed = loadData("time_series_covid19_confirmed_US.csv", "confirmed")
     confirmed = confirmed.drop(columns=['UID','Lat', 'Long_',
                                 "iso2","iso3","code3","FIPS",
                                 "Admin2", "Country_Region","Combined_Key"])
@@ -56,20 +55,31 @@ def load_us():
 
 
     confirmed['date'] = pd.to_datetime(confirmed['date'], infer_datetime_format=False) 
-    deaths = loadData(
-    "time_series_covid19_deaths_US.csv", "death")
+    deaths = loadData("time_series_covid19_deaths_US.csv", "death")
     deaths = deaths.drop(columns=['UID','Lat', 'Long_',
                                 "iso2","iso3","code3","FIPS",
-                                "Admin2", "Country_Region","Combined_Key","Population"])
-    deaths = deaths.groupby('Province_State').sum().T
+                                "Admin2", "Country_Region","Combined_Key"])
+
+    # Group by state/territory and sum over counties
+    deaths = deaths.groupby('Province_State').sum()
+
+    # Extract population into dictionary and then drop as a column
+    pop = dict(zip(deaths.index, deaths['Population']))
+    deaths = deaths.drop(columns='Population')
+
+    # Now take transpose so dates are in rows, and do futher massaging
+    deaths = deaths.T
     deaths = deaths.rename(columns=states.abbrev)
-    
     deaths= deaths.reset_index()
     deaths = deaths.rename(columns={'index': 'date'})
-    df = pd.concat([deaths,confirmed],axis=1,keys=('death','confirmed'))
 
+    # Combine deaths and confirmed cases
+    df = pd.concat([deaths,confirmed],axis=1,keys=('death','confirmed'))
     df = df.reorder_levels([1,0], axis=1).sort_index(axis=1)
-   
     df = df.set_index(confirmed['date'])
-   
-    return df
+
+    
+    # Rename pop to use abbreviations
+    pop = {states.abbrev.get(k): v for k, v in pop.items() if states.abbrev.get(k)}
+    
+    return df, pop
