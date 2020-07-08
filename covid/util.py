@@ -61,46 +61,38 @@ def load_world_data():
       
     return world_data
 
-
+@cachetools.func.ttl_cache(ttl=600)
 def load_state_data():
 
-    US, pop = jhu.load_us()
-
-    state_data = {
+    US = jhu.load_us()
+    info = jhu.get_state_info()
+    
+    data = {
         k : {'data': US[k], 
-             'pop': pop[k],
+             'pop': info.loc[k, 'Population'],
              'name': states.states_territories[k]
             }
-        for k in pop.keys()
+        for k in info.index
     }
     
-    return state_data
+    return data
 
-
-# def load_state_data(source="jhu"):
-
-#     # US state data
-#     if source=="covidtracker":
-#         US = covidtracking.load_us()
-#     if source=="jhu":
-#         US = jhu.load_us()
+@cachetools.func.ttl_cache(ttl=600)
+def load_county_data():
+    US = jhu.load_us(counties=True)
+    info = jhu.get_county_info()
     
+    counties = set(info.index) & set(US.columns.unique(level=0))
     
-#     breakpoint()
+    data = {
+        k : {'data': US[k], 
+             'pop': info.loc[k, 'Population'],
+             'name': info.loc[k, 'name']
+            }
+        for k in counties
+    }
     
-#     traits = states.uga_traits()
-
-#     state_set = set(traits.index) & set(US.columns.unique(level=0))
-
-#     state_data = {
-#         k : {'data': US[k], 
-#              'pop': traits.totalpop[k],
-#              'name': traits.NAME[k]
-#             }
-#         for k in state_set
-#     }
-    
-#     return state_data
+    return data
 
 
 def load_data():
@@ -231,7 +223,7 @@ def run_place(data,
         prior_samples = model.prior(num_samples=num_prior_samples)
 
     # In-sample posterior predictive samples (don't condition on observations)
-    print(" * collecting predictive samples")
+    print(" * collecting in-sample predictive samples")
     post_pred_samples = model.predictive()
 
     # Forecasting posterior predictive (do condition on observations)
@@ -264,11 +256,11 @@ def save_samples(filename,
                  post_pred_samples,
                  forecast_samples):
     
-    np.savez(filename, 
-             prior_samples = prior_samples,
-             mcmc_samples = mcmc_samples, 
-             post_pred_samples = post_pred_samples,
-             forecast_samples = forecast_samples)
+    onp.savez_compressed(filename, 
+                         prior_samples = prior_samples,
+                         mcmc_samples = mcmc_samples,
+                         post_pred_samples = post_pred_samples,
+                         forecast_samples = forecast_samples)
 
 
 def write_summary(filename, mcmc):

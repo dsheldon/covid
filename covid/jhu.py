@@ -4,8 +4,7 @@ import warnings
 
 from . import states
 
-#@functools.lru_cache(128)
-@cachetools.func.ttl_cache(ttl=3600)
+@cachetools.func.ttl_cache(ttl=600)
 def load_and_massage(url):
     df = pd.read_csv(url)
     df = df.drop(columns=['Lat', 'Long'])
@@ -17,8 +16,7 @@ def load_and_massage(url):
     df.index = pd.to_datetime(df.index)
     return df
 
-#@functools.lru_cache(128)
-@cachetools.func.ttl_cache(ttl=3600)
+@cachetools.func.ttl_cache(ttl=600)
 def load_world():
 
     sources = {
@@ -37,49 +35,105 @@ def load_world():
 
     return df
         
-#@functools.lru_cache(128)
-@cachetools.func.ttl_cache(ttl=3600)
-def load_us():
+@cachetools.func.ttl_cache(ttl=600)
+def get_fips_codes():
+    '''Get valid FIPS codes from covid19forecasthub'''
+    url = 'https://raw.githubusercontent.com/reichlab/covid19-forecast-hub/master/data-locations/locations.csv'
+    df = pd.read_csv(url)
+
+    fips_codes = df['location']
+    fips_codes = fips_codes.loc[fips_codes != 'US'].astype(int)
+    return fips_codes
+
+def filter_counties(df):
+    '''Filter rows from JHU data schema to counties represented in forecast hub'''
+    fips_codes = get_fips_codes()
+    
+    # Subset to locations: (1) in US, (2) with county name, (3) with FIPS code recognized by forecast hub
+    df = df.loc[(df['iso2']=='US') & (df['Admin2']) & (df['FIPS'])].copy()
+    df['FIPS'] = df['FIPS'].astype(int)
+    df = df.loc[df['FIPS'].isin(fips_codes)].copy()
+
+    return df
+    
+@cachetools.func.ttl_cache(ttl=600)
+def get_county_info():
+    '''Get state info from JHU location lookup file'''
+    
+    url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/UID_ISO_FIPS_LookUp_Table.csv'
+    df = pd.read_csv(url)
+    
+    df = filter_counties(df)
+
+    # Add county and state columns, and set key to <state abbrev>-<county name>
+    df['name'] = df['Admin2']
+    df['state'] = df['Province_State'].replace(states.abbrev)
+    df['key'] = df['state'] + '-' + df['name']
+    df = df.set_index('key')
+    return df
+
+@cachetools.func.ttl_cache(ttl=600)
+def get_state_info():
+    '''Get state info from JHU location lookup file'''
+    
+    url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/UID_ISO_FIPS_LookUp_Table.csv'
+    df = pd.read_csv(url)
+    df = df.loc[df['FIPS'] <= 78].copy()
+    df['name'] = df['Province_State']
+    df['key'] = df['Province_State'].replace(states.abbrev)
+    df = df.set_index('key')
+    return df
+
+
+@cachetools.func.ttl_cache(ttl=600)
+def load_us(counties=False):
+    
     baseURL = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/"
-    def loadData(fileName, columnName):
-        data = pd.read_csv(baseURL + fileName)
-        return (data)
-    confirmed = loadData("time_series_covid19_confirmed_US.csv", "confirmed")
-    confirmed = confirmed.drop(columns=['UID','Lat', 'Long_',
-                                "iso2","iso3","code3","FIPS",
-                                "Admin2", "Country_Region","Combined_Key"])
-    confirmed = confirmed.groupby('Province_State').sum().T
-    confirmed = confirmed.rename(columns=states.abbrev)  
-    confirmed =confirmed.reset_index()
-    confirmed = confirmed.rename(columns={'index': 'date'})
 
+    def load_us_time_series(file):
+        '''Load data in JHU US time series format (death or confirmed)'''
+    
+        df = pd.read_csv(baseURL + file)
 
-    confirmed['date'] = pd.to_datetime(confirmed['date'], infer_datetime_format=False) 
-    deaths = loadData("time_series_covid19_deaths_US.csv", "death")
-    deaths = deaths.drop(columns=['UID','Lat', 'Long_',
-                                "iso2","iso3","code3","FIPS",
-                                "Admin2", "Country_Region","Combined_Key"])
+        meta_cols = ['UID',
+                     'Lat',
+                     'Long_',
+                     'iso2',
+                     'iso3',
+                     'code3',
+                     'FIPS',
+                     'Admin2',
+                     'Province_State',
+                     'Country_Region',
+                     'Combined_Key',
+                     'Population']
 
-    # Group by state/territory and sum over counties
-    deaths = deaths.groupby('Province_State').sum()
+        meta_cols = [c for c in meta_cols if c in df.columns]
 
-    # Extract population into dictionary and then drop as a column
-    pop = dict(zip(deaths.index, deaths['Population']))
-    deaths = deaths.drop(columns='Population')
+        if counties:        
+            # subset to valid counties, set index to <state abbrev>-<county> and drop other metadata columns
+            df = filter_counties(df)
+            state = df['Province_State'].replace(states.abbrev)
+            county = df['Admin2']
+            df = df.drop(columns=meta_cols)
+            df = df.set_index(state + '-' + county)
 
-    # Now take transpose so dates are in rows, and do futher massaging
-    deaths = deaths.T
-    deaths = deaths.rename(columns=states.abbrev)
-    deaths= deaths.reset_index()
-    deaths = deaths.rename(columns={'index': 'date'})
+        else:
+            # group by state
+            df['state'] = df['Province_State'].replace(states.abbrev)
+            df = df.drop(columns=meta_cols).groupby('state').sum()
 
-    # Combine deaths and confirmed cases
+        df = df.T
+        df.index = pd.to_datetime(df.index)
+        
+        return df
+
+    
+    confirmed = load_us_time_series("time_series_covid19_confirmed_US.csv")
+    deaths = load_us_time_series("time_series_covid19_deaths_US.csv")
+    
+    # Combine deaths and confirmed
     df = pd.concat([deaths,confirmed],axis=1,keys=('death','confirmed'))
     df = df.reorder_levels([1,0], axis=1).sort_index(axis=1)
-    df = df.set_index(confirmed['date'])
-
     
-    # Rename pop to use abbreviations
-    pop = {states.abbrev.get(k): v for k, v in pop.items() if states.abbrev.get(k)}
-    
-    return df, pop
+    return(df)
