@@ -29,22 +29,13 @@ fit_dispersion = {
     }
 }
 
-less_rw_frozen = {
+# State forecasts starting 2020-05-17, all US forecasts 
+resample_80_last_10 = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {
         'gamma_shape':  100,
         'sigma_shape':  100,
-        'rw_scale': 1e-1,
-        'num_frozen': 5
-    }
-}
-
-less_rw_last_5 = {
-    'model': covid.models.SEIRD_incident.SEIRD,
-    'args'  : {
-        'gamma_shape':  100,
-        'sigma_shape':  100,
-        'rw_scale': 1e-1,
-        'rw_use_last': 5
+        'resample_high': 80,
+        'rw_use_last': 10
     }
 }
