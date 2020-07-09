@@ -62,31 +62,49 @@ def load_world_data():
     return world_data
 
 
-def load_state_data(source="jhu"):
+def load_state_data():
 
-    # US state data
-    if source=="covidtracker":
-        US = covidtracking.load_us()
-    if source=="jhu":
-        US = jhu.load_us()
-    
-    traits = states.uga_traits()
-
-    state_set = set(traits.index) & set(US.columns.unique(level=0))
+    US, pop = jhu.load_us()
 
     state_data = {
         k : {'data': US[k], 
-             'pop': traits.totalpop[k],
-             'name': traits.NAME[k]
+             'pop': pop[k],
+             'name': states.states_territories[k]
             }
-        for k in state_set
+        for k in pop.keys()
     }
     
     return state_data
 
 
-def load_data(us_source="jhu"):
-    state_data = load_state_data(source=us_source)
+# def load_state_data(source="jhu"):
+
+#     # US state data
+#     if source=="covidtracker":
+#         US = covidtracking.load_us()
+#     if source=="jhu":
+#         US = jhu.load_us()
+    
+    
+#     breakpoint()
+    
+#     traits = states.uga_traits()
+
+#     state_set = set(traits.index) & set(US.columns.unique(level=0))
+
+#     state_data = {
+#         k : {'data': US[k], 
+#              'pop': traits.totalpop[k],
+#              'name': traits.NAME[k]
+#             }
+#         for k in state_set
+#     }
+    
+#     return state_data
+
+
+def load_data():
+    state_data = load_state_data()
     world_data = load_world_data()
     return dict(world_data, **state_data)
 
