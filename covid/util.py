@@ -192,6 +192,7 @@ def run_place(data,
               prefix = "results",
               resample_low=0,
               resample_high=100,
+              save_fields=['beta0', 'beta', 'sigma', 'gamma', 'dy0', 'dy', 'dy_future', 'dz0', 'dz', 'dz_future', 'y0', 'y', 'y_future', 'z0', 'z', 'z_future' ],
               **kwargs):
 
 
@@ -241,7 +242,8 @@ def run_place(data,
                      prior_samples,
                      mcmc_samples, 
                      post_pred_samples,
-                     forecast_samples)
+                     forecast_samples,
+                     save_fields=save_fields)
         
         path = Path(prefix) / 'summary'
         path.mkdir(parents=True, exist_ok=True)
@@ -254,13 +256,20 @@ def save_samples(filename,
                  prior_samples,
                  mcmc_samples, 
                  post_pred_samples,
-                 forecast_samples):
+                 forecast_samples,
+                 save_fields=None):
     
+
+    def trim(d):
+        if d is not None:
+            d = {k : v for k, v in d.items() if k in save_fields}
+        return d
+        
     onp.savez_compressed(filename, 
-                         prior_samples = prior_samples,
-                         mcmc_samples = mcmc_samples,
-                         post_pred_samples = post_pred_samples,
-                         forecast_samples = forecast_samples)
+                         prior_samples = trim(prior_samples),
+                         mcmc_samples = trim(mcmc_samples),
+                         post_pred_samples = trim(post_pred_samples),
+                         forecast_samples = trim(forecast_samples))
 
 
 def write_summary(filename, mcmc):
@@ -461,16 +470,16 @@ def score_forecast(forecast_date,
         if len(places) > 1:
             summary.loc[date, 'horizon'] = horizon
 
-        # Compute signer error / bias
+            # Compute signed error / bias
             summary.loc[date, 'signed_err'] = rows['err'].mean()
         
-        # Compute MAE
+            # Compute MAE
             summary.loc[date, 'MAE'] = rows['err'].abs().mean()
         
-        # Compute avg. log-score
+            # Compute avg. log-score
             summary.loc[date, 'log_score'] = rows['log_score'].mean()
         
-        # Compute KS statistic
+            # Compute KS statistic
             ks, pval = scipy.stats.kstest(rows['quantile'], 'uniform')
             summary.loc[date,'KS'] = ks
             summary.loc[date,'KS_pval'] = pval
@@ -478,13 +487,13 @@ def score_forecast(forecast_date,
         else:
             summary.loc[date, 'horizon'] = horizon
 
-        # Compute signer error / bias
+            # Compute signed error / bias
             summary.loc[date, 'signed_err'] = rows['err']
 
-        # Compute MAE
+            # Compute MAE
             summary.loc[date, 'MAE'] = rows['err']
 
-        # Compute avg. log-score
+            # Compute avg. log-score
             summary.loc[date, 'log_score'] = rows['log_score']
         
     summary['forecast_date'] = forecast_date
