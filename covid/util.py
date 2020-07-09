@@ -98,7 +98,8 @@ def load_county_data():
 def load_data():
     state_data = load_state_data()
     world_data = load_world_data()
-    return dict(world_data, **state_data)
+    county_data = load_county_data()
+    return dict(world_data, **state_data, **county_data)
 
 
 def load_state_Xy(which=None):
