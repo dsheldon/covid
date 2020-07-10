@@ -110,11 +110,12 @@ def load_us(counties=False):
 
         meta_cols = [c for c in meta_cols if c in df.columns]
 
-        if counties:        
+        if counties:
             # subset to valid counties, set index to <state abbrev>-<county> and drop other metadata columns
             df = filter_counties(df)
             state = df['Province_State'].replace(states.abbrev)
             county = df['Admin2']
+            county = county.replace({'New York': 'New York City'}) # correct inconsistency with metadata table
             df = df.drop(columns=meta_cols)
             df = df.set_index(state + '-' + county)
 
