@@ -97,7 +97,6 @@ territories = {
         'AS': 'American Samoa',
         'GU': 'Guam',
         'MP': 'Northern Mariana Islands',
-        'NA': 'National',
         'PR': 'Puerto Rico',
         'VI': 'Virgin Islands'
 }

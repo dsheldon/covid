@@ -2,8 +2,10 @@ import covid.models.SEIRD
 import covid.models.SEIRD_variable_detection
 import covid.models.SEIRD_incident
 
+import covid.util as util
 
 
+# 2020-04-25 forecast (?)
 SEIRD = {
     'model' : covid.models.SEIRD.SEIRD,
     'args'  : {}                # use defaults
@@ -29,22 +31,25 @@ fit_dispersion = {
     }
 }
 
-less_rw_frozen = {
+# State forecasts starting 2020-05-17, all US forecasts 
+resample_80_last_10 = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {
         'gamma_shape':  100,
         'sigma_shape':  100,
-        'rw_scale': 1e-1,
-        'num_frozen': 5
+        'resample_high': 80,
+        'rw_use_last': 10
     }
 }
 
-less_rw_last_5 = {
+counties = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {
         'gamma_shape':  100,
         'sigma_shape':  100,
+        'resample_high': 80,
+        'rw_use_last': 10,
         'rw_scale': 1e-1,
-        'rw_use_last': 5
+        'T_future': 8*7
     }
 }

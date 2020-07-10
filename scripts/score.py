@@ -1,25 +1,21 @@
-
-
-
 import configs
 import covid.util as util
+import covid.states as states
 import covid.models.SEIRD_variable_detection
+import covid.jhu as jhu
 import numpy as np
 import pandas as pd
 import argparse
 
 from pathlib import Path
 
-config_names=['less_rw_frozen_10', 'less_rw_last_10']
-config_names=['lesss_rw_last_5']
-config_names=['less_rw', 'last_5']
-config_names=['last_10']
-config_names=['resample_80', 'resample_90']
-config_names=['resample_90_last_5', 'resample_90_last_10']
-config_names=['resample_85', 'resample_80_last_5', 'resample_80_last_10']
+county_list = list(jhu.get_county_info().sort_values('Population', ascending=False).index)[:500]
+state_list = list(jhu.get_state_info().sort_index().index)
+
+config_names=['counties']
 config_names=['resample_80_last_10']
-forecast_dates = ['2020-04-18', '2020-04-25', '2020-05-03', '2020-05-10']
-eval_date = '2020-05-16'
+forecast_dates = ['2020-06-21']
+eval_date = '2020-07-03'
 root='results1'
 
 def write_summary(summary, filename):
@@ -34,19 +30,23 @@ def write_summary(summary, filename):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Score compartmental models.')
-    parser.add_argument('places', help='places to use (e.g., US state)', nargs='?', default='states')
+    parser.add_argument('places', help='places to use', nargs='?', default='states')
     args = parser.parse_args()
 
-    if args.places == "US":     
-        data = util.load_state_data()
-        US_data = util.load_data()
-        US_data = US_data['US']
-        data['US'] = US_data
-        places = ['US']
-    elif args.places == "states":
-        data = util.load_state_data()
-        places=None
+    data = util.load_data()
 
+    # Special case for when places is only US
+    if args.places == 'US':
+        places == ['US']
+        suffix = '-US'
+    elif args.places == 'states':
+        places = state_list
+        suffix = "-states"
+    elif args.places == 'counties':
+        places = county_list
+        suffix = "-counties"
+    else:
+        raise ValueError('Unrecognized place: ' + args.places)
 
     overall_summary = pd.DataFrame()
 
@@ -64,10 +64,10 @@ if __name__ == "__main__":
             errs = []
 
             summary, details = util.score_forecast(forecast_date,
-                                               data,
-                                               model_type=config['model'],
-                                               prefix=prefix,
-                                               places=places   )
+                                                   data,
+                                                   model_type=config['model'],
+                                                   prefix=prefix,
+                                                   places=places   )
         
 
             summary.insert(0, 'model', config_name)
@@ -75,8 +75,8 @@ if __name__ == "__main__":
         
             path = Path(prefix) / 'eval'
             path.mkdir(parents=True, exist_ok=True)
-            summary.to_csv(path / 'summary.csv', float_format="%.4f")
-            details.to_csv(path / 'details.csv', float_format="%.4f")
+            summary.to_csv(path / f'summary{suffix}.csv', float_format="%.4f")
+            details.to_csv(path / f'details{suffix}.csv', float_format="%.4f")
 
 
             config_summary = config_summary.append(summary.loc[eval_date])
@@ -87,13 +87,12 @@ if __name__ == "__main__":
 
         print(f"***Config {config_name} results***")
         print(config_summary)
-        write_summary(config_summary, f"{root}/{config_name}/summary.csv")
+        write_summary(config_summary, f"{root}/{config_name}/summary{suffix}.csv")
 
         overall_summary = overall_summary.append(config_summary)
     
 
     # write overall summary
-    write_summary(overall_summary, Path(root) / 'summary.csv')
+    write_summary(overall_summary, Path(root) / f'summary{suffix}.csv')
     print(f"***Overall results***")
     print(overall_summary)
-

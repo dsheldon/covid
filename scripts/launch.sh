@@ -1,14 +1,14 @@
 #!/bin/bash
 
+EXTRA_ARGS=$@
 
-root=results
-start='2020-03-15'
-configs="fit_dispersion"
-#forecast_dates="2020-04-04 2020-04-11  2020-04-18 2020-04-25"   # validation
-forecast_dates="2020-05-03" # this week's submission
-
+root=results1
+start='2020-03-04'
+configs="resample_80_last_10"
+forecast_dates="2020-06-14 2020-06-21 2020-06-28 2020-07-05"
 
 states="US AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY"
+#states="US"
 
 for config in $configs; do
     for forecast_date in $forecast_dates; do
@@ -28,9 +28,9 @@ for config in $configs; do
 		--error=$logdir/$state.err \
 		--nodes=1 \
 		--ntasks=1 \
-		--mem=5000 \
+		--mem=4000 \
 		--partition=defq \
-		./run_sir.sh $state --start $start --end $forecast_date --config $config --prefix $prefix
+		./run_sir.sh $state --start $start --end $forecast_date --config $config --prefix $prefix $EXTRA_ARGS
 
 	    sleep 0.1
 	done
