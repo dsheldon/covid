@@ -9,14 +9,14 @@ import argparse
 
 from pathlib import Path
 
-county_list = list(jhu.get_county_info().sort_values('Population', ascending=False).index)
-state_list = list(jhu.get_county_info().sort_index().index)
+county_list = list(jhu.get_county_info().sort_values('Population', ascending=False).index)[:500]
+state_list = list(jhu.get_state_info().sort_index().index)
 
 config_names=['counties']
+config_names=['resample_80_last_10']
 forecast_dates = ['2020-06-21']
 eval_date = '2020-07-03'
 root='results1'
-places=county_list[:500]
 
 def write_summary(summary, filename):
     summary = summary.reset_index(drop=True)
@@ -30,16 +30,23 @@ def write_summary(summary, filename):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Score compartmental models.')
-    parser.add_argument('places', help='places to use (e.g., US state)', nargs='*', )
+    parser.add_argument('places', help='places to use', nargs='?', default='states')
     args = parser.parse_args()
 
     data = util.load_data()
-    places = args.places or places
 
     # Special case for when places is only US
-    suffix=''
-    if places == ['US']:
+    if args.places == 'US':
+        places == ['US']
         suffix = '-US'
+    elif args.places == 'states':
+        places = state_list
+        suffix = "-states"
+    elif args.places == 'counties':
+        places = county_list
+        suffix = "-counties"
+    else:
+        raise ValueError('Unrecognized place: ' + args.places)
 
     overall_summary = pd.DataFrame()
 
@@ -57,10 +64,10 @@ if __name__ == "__main__":
             errs = []
 
             summary, details = util.score_forecast(forecast_date,
-                                               data,
-                                               model_type=config['model'],
-                                               prefix=prefix,
-                                               places=places   )
+                                                   data,
+                                                   model_type=config['model'],
+                                                   prefix=prefix,
+                                                   places=places   )
         
 
             summary.insert(0, 'model', config_name)
