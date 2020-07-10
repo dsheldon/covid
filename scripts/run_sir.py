@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     config = getattr(configs, args.config)
 
-    data = util.load_data()
+    data = config.get('data') or util.load_data()
 
     if args.run:
         util.run_place(data,

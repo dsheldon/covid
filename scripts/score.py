@@ -1,16 +1,22 @@
 import configs
 import covid.util as util
+import covid.states as states
 import covid.models.SEIRD_variable_detection
+import covid.jhu as jhu
 import numpy as np
 import pandas as pd
 import argparse
 
 from pathlib import Path
 
-config_names=["resample_80_last_10"]
-forecast_dates = ['2020-06-14', '2020-06-21', '2020-06-28']
+county_list = list(jhu.get_county_info().sort_values('Population', ascending=False).index)
+state_list = list(jhu.get_county_info().sort_index().index)
+
+config_names=['counties']
+forecast_dates = ['2020-06-21']
 eval_date = '2020-07-03'
 root='results1'
+places=county_list[:500]
 
 def write_summary(summary, filename):
     summary = summary.reset_index(drop=True)
@@ -24,21 +30,16 @@ def write_summary(summary, filename):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Score compartmental models.')
-    parser.add_argument('places', help='places to use (e.g., US state)', nargs='?', default='states')
+    parser.add_argument('places', help='places to use (e.g., US state)', nargs='*', )
     args = parser.parse_args()
 
-    if args.places == "US":     
-        data = util.load_state_data()
-        US_data = util.load_data()
-        US_data = US_data['US']
-        data['US'] = US_data
-        places = ['US']
-        suffix="-US"
-    elif args.places == "states":
-        data = util.load_state_data()
-        places=None
-        suffix=""
+    data = util.load_data()
+    places = args.places or places
 
+    # Special case for when places is only US
+    suffix=''
+    if places == ['US']:
+        suffix = '-US'
 
     overall_summary = pd.DataFrame()
 
