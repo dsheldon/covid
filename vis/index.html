@@ -1,6 +1,6 @@
 <html>
   <head>
-    <title>State SEIR Results</title>
+    <title>SEIR Results</title>
     <script src="https://d3js.org/d3.v5.min.js"></script>  
   </head>
 
@@ -26,7 +26,7 @@
     }
   </style>
   <body>
-    <h1>State SEIR Results</h1>
+    <h1>SEIR Results</h1>
 
     Scale:
     <select id="scale">
@@ -42,15 +42,20 @@
 
     Time horizon:
     <select id="horizon">
-      <option value="14">2 weeks</option>
       <option value="28" selected>4 weeks</option>
+      <option value="56">8 weeks</option>
     </select>
 
   </body>
 
+
+  <script src="places.js"></script>
+  
   <script>
-    var states = ['US','AK', 'AL', 'AR', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'GA', 'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME', 'MI', 'MN', 'MO', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV', 'NY', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VA', 'VT', 'WA', 'WI', 'WV', 'WY'];
-    
+
+    var keys = Object.keys(places);
+
+    console.log(keys.length);
     
     d3.select("#scale").on('change', load)
     d3.select("#target").on('change', load)
@@ -64,12 +69,14 @@
         
         var divs =
             d3.select("body").selectAll("div")
-            .data(states);
+            .data(keys);
 
         var entering = divs.enter()
             .append("div")
-            .attr("class", "row")
+            .attr("class", "row");
 
+        entering.append("p").text((d) => places[d]['Combined_Key']);
+        
         entering.append("img")
             .attr("class", "forecast")
             .attr("src", (d, i) => d + "_scale_" + scale + "_daily_" + daily + "_T_" + T + ".png");
