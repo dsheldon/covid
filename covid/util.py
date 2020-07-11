@@ -323,7 +323,7 @@ def gen_forecasts(data,
         
     for daily in [False, True]:
         for scale in ['log', 'lin']:
-            for T in [14, 28]:
+            for T in [28, 56]:
 
                 fig, axes = plt.subplots(nrows = 2, figsize=(8,12), sharex=True)    
 
