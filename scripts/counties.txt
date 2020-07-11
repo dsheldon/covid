@@ -7,10 +7,8 @@ CA-San Diego
 CA-Orange
 FL-Miami-Dade
 TX-Dallas
-NY-Kings
 CA-Riverside
 NV-Clark
-NY-Queens
 WA-King
 CA-San Bernardino
 TX-Tarrant
@@ -25,7 +23,6 @@ CA-Sacramento
 FL-Palm Beach
 NY-Suffolk
 FL-Hillsborough
-NY-Bronx
 FL-Orange
 NY-Nassau
 OH-Franklin
@@ -144,7 +141,6 @@ IA-Polk
 WA-Clark
 IN-Lake
 ID-Ada
-NY-Richmond
 FL-Seminole
 NV-Washoe
 VA-Prince William
@@ -980,8 +976,8 @@ PA-Venango
 IL-Ogle
 IL-Coles
 VA-Henry
-MN-Winona
 ME-Somerset
+MN-Winona
 MD-Queen Anne's
 TX-Navarro
 WA-Whitman
@@ -1257,8 +1253,8 @@ NY-Essex
 VT-Addison
 OH-Williams
 TX-Howard
-TX-Hill
 MN-Steele
+TX-Hill
 TX-Matagorda
 AL-Escambia
 OH-Coshocton
@@ -1280,8 +1276,8 @@ ME-Sagadahoc
 MO-Barry
 MI-Delta
 IN-Adams
-UT-Uintah
 GA-Ware
+UT-Uintah
 MO-Laclede
 MI-Houghton
 MO-Warren
@@ -1391,8 +1387,8 @@ ME-Washington
 GA-Gilmer
 LA-Jefferson Davis
 OH-Hardin
-ND-Morton
 MN-Polk
+ND-Morton
 NE-Adams
 AL-Franklin
 VA-Petersburg
@@ -1583,8 +1579,8 @@ FL-Washington
 MI-Gladwin
 IN-Posey
 MO-Texas
-CO-Teller
 MO-Audrain
+CO-Teller
 VT-Lamoille
 TX-Fayette
 MO-Adair
@@ -1676,8 +1672,8 @@ WV-Hampshire
 TX-Bandera
 IN-Fayette
 VA-New Kent
-ID-Blaine
 TX-Hockley
+ID-Blaine
 MO-Ray
 IN-Starke
 TX-Houston
@@ -1849,8 +1845,8 @@ OK-McIntosh
 NM-Lincoln
 GA-Long
 NC-Northampton
-GA-Pierce
 IL-Douglas
+GA-Pierce
 AL-Butler
 MO-Benton
 IA-Jackson
@@ -1901,8 +1897,8 @@ FL-Madison
 KS-Dickinson
 SD-Beadle
 TX-Burleson
-GA-Appling
 AK-Bethel
+GA-Appling
 TX-Eastland
 MS-Stone
 GA-Greene
@@ -1964,8 +1960,8 @@ KY-McCreary
 AL-Henry
 CA-Mariposa
 IL-Edgar
-VA-Buckingham
 VA-King William
+VA-Buckingham
 GA-Rabun
 MS-Chickasaw
 MO-New Madrid
@@ -1991,8 +1987,8 @@ VA-Giles
 AR-Jackson
 TX-Scurry
 GA-Ben Hill
-WV-Taylor
 KY-Rockcastle
+WV-Taylor
 AR-Marion
 TN-Wayne
 ID-Idaho
@@ -2110,8 +2106,8 @@ MO-Gasconade
 TN-Cannon
 OK-Choctaw
 KY-Trigg
-TX-Trinity
 AL-Hale
+TX-Trinity
 VA-Clarke
 VA-Falls Church
 KY-Pendleton
@@ -2154,14 +2150,14 @@ OK-Murray
 SD-Clay
 SC-Bamberg
 IA-Harrison
-CO-Archuleta
 MI-Crawford
+CO-Archuleta
 IN-Newton
 MI-Gogebic
 GA-Screven
 WV-Braxton
-NC-Chowan
 TX-Callahan
+NC-Chowan
 LA-Winn
 AK-Ketchikan Gateway
 IL-Washington
@@ -2174,8 +2170,8 @@ WV-Hardy
 AL-Crenshaw
 IL-Massac
 OK-Atoka
-MT-Glacier
 IA-O'Brien
+MT-Glacier
 WA-Pend Oreille
 TN-Stewart
 WV-Roane
@@ -2273,8 +2269,8 @@ IA-Grundy
 MN-Koochiching
 MT-Jefferson
 TX-Live Oak
-VA-Lunenburg
 IL-Menard
+VA-Lunenburg
 CO-Prowers
 KY-Magoffin
 KY-Edmonson
@@ -2358,8 +2354,8 @@ KY-Owen
 MN-Watonwan
 NC-Camden
 LA-West Carroll
-MT-Richland
 GA-Candler
+MT-Richland
 MI-Mackinac
 NM-Sierra
 NE-Box Butte
@@ -2367,8 +2363,8 @@ NE-Custer
 IL-Cumberland
 AR-Bradley
 IN-Switzerland
-MT-Carbon
 TX-Franklin
+MT-Carbon
 NE-Red Willow
 AR-Pike
 NE-Colfax
@@ -2528,8 +2524,8 @@ GA-Wilcox
 MS-Wilkinson
 IA-Monona
 MT-Dawson
-IA-Lucas
 MT-Madison
+IA-Lucas
 WV-Tyler
 NE-Dawes
 TX-Archer
@@ -2563,8 +2559,8 @@ AR-Nevada
 WV-Pocahontas
 MI-Oscoda
 TX-San Augustine
-KY-Lyon
 MS-Choctaw
+KY-Lyon
 MI-Baraga
 CO-Conejos
 TN-Houston
@@ -2725,11 +2721,11 @@ VA-Bland
 MO-Reynolds
 CO-Gilpin
 MT-Broadwater
-MI-Luce
 TX-Garza
+MI-Luce
 MN-Wilkin
-AK-Prince of Wales-Hyder
 NE-Clay
+AK-Prince of Wales-Hyder
 GA-Talbot
 GA-Calhoun
 SD-Hamlin
@@ -2767,8 +2763,8 @@ IL-Putnam
 TX-Crosby
 MI-Ontonagon
 GA-Miller
-TX-Floyd
 OK-Greer
+TX-Floyd
 KS-Ottawa
 OK-Alfalfa
 CO-Lincoln
@@ -2906,8 +2902,8 @@ ND-Sargent
 CO-Costilla
 OK-Ellis
 TX-Reagan
-KS-Kearny
 ID-Lewis
+KS-Kearny
 ND-Wells
 TX-Fisher
 SD-Edmunds
@@ -2969,8 +2965,8 @@ NE-Brown
 SD-Douglas
 TX-Collingsworth
 NE-Perkins
-ND-Nelson
 KS-Jewell
+ND-Nelson
 SD-Perkins
 TX-Cochran
 MT-Fallon
@@ -2996,9 +2992,9 @@ GA-Webster
 ID-Butte
 KS-Morton
 KS-Hamilton
-KS-Elk
 KS-Rawlins
 AK-Haines
+KS-Elk
 KS-Sheridan
 AK-Wrangell
 ND-Hettinger
@@ -3013,17 +3009,17 @@ WY-Niobrara
 SD-Sanborn
 MT-Liberty
 ND-Renville
-GA-Quitman
 SD-Faulk
+GA-Quitman
 ND-Eddy
-ND-Grant
 TX-Jeff Davis
+ND-Grant
 ND-Divide
 CO-Sedgwick
 ND-Griggs
 WA-Garfield
-ND-Adams
 SD-Miner
+ND-Adams
 TX-Dickens
 VA-Highland
 ND-Towner
