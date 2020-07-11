@@ -49,11 +49,22 @@ def filter_counties(df):
     '''Filter rows from JHU data schema to counties represented in forecast hub'''
     fips_codes = get_fips_codes()
     
-    # Subset to locations: (1) in US, (2) with county name, (3) with FIPS code recognized by forecast hub
+    exclude_counties = ['Kings, New York, US', 
+                        'Queens, New York, US', 
+                        'Bronx, New York, US', 
+                        'Richmond, New York, US']
+    
+    # Subset to locations: 
+    #   (1) in US,
+    #   (2) with county name, 
+    #   (3) with FIPS code recognized by forecast hub
+    #   (4) not in list of NYC counties with no data on JHU
+    
     df = df.loc[(df['iso2']=='US') & (df['Admin2']) & (df['FIPS'])].copy()
     df['FIPS'] = df['FIPS'].astype(int)
     df = df.loc[df['FIPS'].isin(fips_codes)].copy()
-
+    df = df.loc[~df['Combined_Key'].isin(exclude_counties)].copy()
+    
     return df
     
 @cachetools.func.ttl_cache(ttl=600)
