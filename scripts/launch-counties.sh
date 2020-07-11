@@ -5,9 +5,11 @@ EXTRA_ARGS=$@
 root=results1
 start='2020-03-04'
 configs="counties"
-forecast_dates="2020-06-21"
+forecast_dates="2020-05-31 2020-06-07 2020-06-14 2020-06-21 2020-06-28 2020-07-05"
+forecast_dates="2020-05-10 2020-05-17 2020-05-24"
+forecast_dates="2020-06-07 2020-07-05"
 
-max_places=500
+max_places=5000
 
 for config in $configs; do
     for forecast_date in $forecast_dates; do

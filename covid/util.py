@@ -379,10 +379,20 @@ def score_place(forecast_date,
                 data,
                 place,
                 model_type=covid.models.SEIRD.SEIRD,
-                prefix="results"):
-
+                prefix="results",
+                target='deaths'):
     '''Gives performance metrics for each time horizon for one place'''
     
+    if target == 'deaths':
+        forecast_field = 'z'
+        obs_field = 'death'
+    elif target == 'cases':
+        forecast_field = 'y'
+        obs_field = 'confirmed'
+    else:
+        raise ValueError('Invalid target')
+
+
     filename = Path(prefix) / 'samples' / f'{place}.npz'
     prior_samples, mcmc_samples, post_pred_samples, forecast_samples = \
         load_samples(filename)
@@ -391,12 +401,12 @@ def score_place(forecast_date,
 
     start = pd.to_datetime(forecast_date) + pd.Timedelta("1d")
 
-    # cumulative deaths 
-    obs = data[place]['data'][start:].death
+    # cumulative deaths/cases 
+    obs = data[place]['data'][start:][obs_field]
     end = obs.index.max()
 
-    # predicted deaths
-    z = model.get(forecast_samples, 'z', forecast=True)
+    # predicted deaths/cases
+    z = model.get(forecast_samples, forecast_field, forecast=True)
     
     # truncate to smaller length
     T = min(len(obs), z.shape[1])
@@ -433,7 +443,8 @@ def score_forecast(forecast_date,
                    data, 
                    places=None, 
                    model_type=covid.models.SEIRD.SEIRD,
-                   prefix="results"):
+                   prefix="results",
+                   target="deaths"):
 
     
     if places is None:
@@ -451,7 +462,8 @@ def score_forecast(forecast_date,
                                    data,
                                    place,
                                    model_type=model_type,
-                                   prefix=prefix)
+                                   prefix=prefix,
+                                   target=target)
         except Exception as e:
             warnings.warn(f'Could not score {place}')
             print(e)
