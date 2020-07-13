@@ -14,7 +14,7 @@ import numpy as np
 from epiweeks import Week, Year
 
 data = util.load_state_data()
-places = ['US'] + sorted(list(data.keys()))
+places = ['US']+ sorted(list(data.keys()))
 #places = ['AK', 'AL']
 
 allQuantiles = [0.01,0.025]+list(np.arange(0.05,0.95+0.05,0.05)) + [0.975,0.99]
@@ -29,8 +29,8 @@ forecast = {'quantile':[],'target_end_date':[], 'value':[], 'type':[], 'location
 for place in places:
     prior_samples, mcmc_samples, post_pred_samples, forecast_samples = util.load_samples(samples_directory +place +".npz")
     forecast_samples = model.get(forecast_samples, 'z',forecast=True)
-    t = pd.date_range(start=forecast_start, periods=forecast_samples.shape[1], freq='D')
-    daily_df = pd.DataFrame(index=t, data=np.transpose(forecast_samples))
+    t = pd.date_range(start=forecast_start, periods=forecast_samples.shape[1]-1, freq='D')
+    daily_df = pd.DataFrame(index=t, data=np.transpose(forecast_samples[:,:-1]))
     point_df = daily_df.median(axis=1)
     weekly_df = daily_df.resample("1w",label='left',closed='left').last()#.apply(lambda x : x[-1])
     weekly_df[weekly_df<0.] = 0.
