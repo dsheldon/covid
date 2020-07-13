@@ -13,7 +13,6 @@ samples_directory = sys.argv[2]
 import numpy as np
 from epiweeks import Week, Year
 
-num_weeks = 8
 data = util.load_state_data()
 places = ['US'] + sorted(list(data.keys()))
 #places = ['AK', 'AL']
