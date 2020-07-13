@@ -14,6 +14,7 @@ from pathlib import Path
 
 config_names=['counties']
 forecast_dates=["2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05"]
+forecast_dates=["2020-06-07", "2020-07-05"]
 eval_date = '2020-07-09'
 root='results1'
 
