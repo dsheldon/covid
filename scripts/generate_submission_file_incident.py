@@ -17,13 +17,14 @@ from epiweeks import Week, Year
 num_weeks = 8
 data = util.load_data()
 state_data = util.load_state_data()
-places = ['US'] + sorted(list(state_data.keys()))
-#places = ['AK', 'AL']
+places = ['US']+ sorted(list(state_data.keys()))
 
 allQuantiles = [0.01,0.025]+list(np.arange(0.05,0.95+0.05,0.05)) + [0.975,0.99]
 
 # FIX FOR NEXT WEEK 06/01
-forecast_start = forecast_date + pd.Timedelta("1d")
+# UPDATE 07/13 - Keep the offset to Sunday of the forecast week
+
+forecast_start = forecast_date #+ pd.Timedelta("1d")
 
 model = model_type.SEIRD()
 
