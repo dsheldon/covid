@@ -33,22 +33,32 @@ forecast = {'quantile':[],'target_end_date':[], 'value':[], 'type':[], 'location
 
 
 for place in places:
-    current_incident = data[place]['data']['death'][forecast_date ] - data[place]['data']['death'][forecast_date - pd.Timedelta("1d")]
+
     prior_samples, mcmc_samples, post_pred_samples, forecast_samples = util.load_samples(samples_directory +place +".npz")
+    
     forecast_samples = model.get(forecast_samples, 'dz',forecast=True)
     t = pd.date_range(start=forecast_start, periods=forecast_samples.shape[1], freq='D')
     daily_df = pd.DataFrame(index=t,data=forecast_samples.T)
     weekly_df = pd.DataFrame(index=t, data=np.transpose(forecast_samples)).resample("1w",closed='left',label='left').sum()
     weekly_df[weekly_df<0.] = 0.
-    weekly_df.iloc[0] = weekly_df.iloc[0] + current_incident
+    weekly_df.iloc[0] = weekly_df.iloc[0] 
+    
     for time, samples in weekly_df.iterrows():
+        week_ahead = time.week - forecast_date.week + 1
+
+        forecast["quantile"].append("NA")
+        forecast["value"].append(np.mean(samples))
+        forecast["type"].append("point_mean")
+        forecast["location"].append(place)
+        forecast["target"].append("{:d} wk ahead inc case".format(week_ahead))
+        forecast["target_end_date"].append("NA")
+
         for q in allQuantiles:
                  deathPrediction = np.percentile(samples,q*100)
                  forecast["quantile"].append("{:.3f}".format(q))
                  forecast["value"].append(deathPrediction)
                  forecast["type"].append("quantile")
                  forecast["location"].append(place)
-                 week_ahead = time.week - forecast_date.week + 1
                  forecast["target"].append("{:d} wk ahead inc death".format(week_ahead))
                  forecast["forecast_date"] = forecast_date
                  next_saturday = pd.Timedelta('6 days')
