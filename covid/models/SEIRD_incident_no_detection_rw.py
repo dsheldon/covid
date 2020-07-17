@@ -154,7 +154,7 @@ class SEIRD(SEIRDBase):
                       gamma, 
                       forecast_rw_scale, 
                       drift, 
-                      det_prob[-rw_use_last:].mean(),
+                     det_prob0,# det_prob[-rw_use_last:].mean(),
                       confirmed_dispersion, 
                       death_dispersion,
                       death_prob, 
@@ -170,7 +170,7 @@ class SEIRD(SEIRDBase):
             y = np.append(y, y_f)
             z = np.append(z, z_f)
 
-        return beta, x, y, z, det_prob, death_prob
+        return beta, x, y, z, det_prob0, death_prob
     
     
     def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, suffix=""):
@@ -215,7 +215,7 @@ class SEIRD(SEIRDBase):
             z = observe_nb2("dz" + suffix, x_diff[:,5], det_prob_d, death_dispersion, obs = death)  
 
         
-        return beta, det_prob, x, y, z
+        return beta, det_prob0, x, y, z
 
     
     
