@@ -7,9 +7,10 @@ start='2020-03-04'
 configs="counties"
 forecast_dates="2020-05-31 2020-06-07 2020-06-14 2020-06-21 2020-06-28 2020-07-05"
 forecast_dates="2020-05-10 2020-05-17 2020-05-24"
-forecast_dates="2020-06-07 2020-07-05"
+forecast_dates="2020-06-07 2020-07-05 2020-07-12"
+forecast_dates="2020-07-19"
 
-max_places=5000
+max_places=500
 
 for config in $configs; do
     for forecast_date in $forecast_dates; do
