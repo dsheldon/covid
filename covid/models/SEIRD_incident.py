@@ -89,8 +89,8 @@ class SEIRD(SEIRDBase):
                                               (1-.9) * 100))
 
         death_prob = numpyro.sample("death_prob", 
-                                    dist.Beta(.01 * 100,
-                                              (1-.01) * 100))
+                                    dist.Beta(0.01 * 100, (1-0.01) * 100))
+                                    #dist.Beta(0.02 * 1000, (1-0.02) * 1000))  
 
         death_rate = numpyro.sample("death_rate", 
                                     dist.Gamma(10, 10 * 10))
