@@ -35,13 +35,20 @@ for place in places:
     weekly_df = daily_df.resample("1w",label='left',closed='left').last()#.apply(lambda x : x[-1])
     weekly_df[weekly_df<0.] = 0.
     for time, samples in weekly_df.iterrows():
+        week_ahead = time.week - forecast_date.week + 1
+
+        forecast["quantile"].append("NA")
+        forecast["value"].append(np.mean(samples))
+        forecast["type"].append("point_mean")
+        forecast["location"].append(place)
+        forecast["target"].append("{:d} wk ahead cum death".format(week_ahead))
+        forecast["target_end_date"].append("NA")
         for q in allQuantiles:
                  deathPrediction = np.percentile(samples,q*100)
                  forecast["quantile"].append("{:.3f}".format(q))
                  forecast["value"].append(deathPrediction)
                  forecast["type"].append("quantile")
                  forecast["location"].append(place)
-                 week_ahead = time.week - forecast_date.week + 1
                  forecast["target"].append("{:d} wk ahead cum death".format(week_ahead))
                  forecast["forecast_date"] = forecast_date
                  next_saturday = pd.Timedelta('6 days')
