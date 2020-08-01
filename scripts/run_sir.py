@@ -34,6 +34,7 @@ if __name__ == "__main__":
     util.redistribute(data['IL']['data'], '2020-07-07', 225, 30)
     util.redistribute(data['DE']['data'], '2020-07-24', 45, 30)
     util.redistribute(data['MO']['data'], '2020-07-23', 25, 30)
+    util.redistribute(data['TX']['data'], '2020-07-27', 550, 30)
 
     if args.run:
         util.run_place(data,
