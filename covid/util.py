@@ -38,7 +38,6 @@ Data
 ************************************************************
 """
 
-@cachetools.func.ttl_cache(ttl=600)
 def load_world_data():
     # world data
     world = jhu.load_world()
@@ -51,7 +50,7 @@ def load_world_data():
     country_names_valid = set(country_names) & set(world_pop_data.index) 
     
     world_data = {
-        k: {'data' : world[k].tot, 
+        k: {'data' : world[k].tot.copy(), 
             'pop' : world_pop_data.loc[k]['Year_2016'],
             'name' : k}
         for k in country_names_valid
@@ -61,14 +60,13 @@ def load_world_data():
       
     return world_data
 
-@cachetools.func.ttl_cache(ttl=600)
 def load_state_data():
 
     US = jhu.load_us()
     info = jhu.get_state_info()
     
     data = {
-        k : {'data': US[k], 
+        k : {'data': US[k].copy(), 
              'pop': info.loc[k, 'Population'],
              'name': states.states_territories[k]
             }
@@ -77,7 +75,6 @@ def load_state_data():
     
     return data
 
-@cachetools.func.ttl_cache(ttl=600)
 def load_county_data():
     US = jhu.load_us(counties=True)
     info = jhu.get_county_info()
@@ -85,7 +82,7 @@ def load_county_data():
     counties = set(info.index) & set(US.columns.unique(level=0))
     
     data = {
-        k : {'data': US[k], 
+        k : {'data': US[k].copy(), 
              'pop': info.loc[k, 'Population'],
              'name': info.loc[k, 'name']
             }
@@ -126,6 +123,30 @@ def load_state_Xy(which=None):
         
     return Xy, X_place
 
+
+
+def redistribute(df, date, n, k, col='death'):
+    '''Redistribute n incident cases/deaths to previous k days'''
+    
+    # Note: modifies df in place
+
+    # e.g., 100 incident deaths happen on day t
+    #   --> n/k incident deaths on days t-k+1, t-k+2, ..., t
+    #   --> n/3 incident deaths on days t-2, t-1, 2
+    # 
+    # the cumulative number by day t does not change
+        
+    a = n // (k-1)
+    b = n % (k-1)
+    
+    new_incident = a * onp.ones(k-1)
+    new_incident[:b] += 1
+    new_cumulative = onp.cumsum(new_incident)    
+    
+    date = pd.to_datetime(date)
+    days = pd.date_range(end=date-pd.Timedelta('1d'), periods=k-1)
+    
+    df.loc[days, col] += new_cumulative
 
 
 """
