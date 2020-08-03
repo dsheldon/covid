@@ -220,7 +220,7 @@ def clean_daily_obs(obs, radius=2):
         n = len(obs[left:right])
         
         avg = tot // n
-        rem = tot % n
+        rem = int(tot % n)
 
         obs[left:right] = avg
         obs[left:(left+rem)] += 1
