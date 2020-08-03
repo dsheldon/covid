@@ -26,10 +26,6 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
-    # Redistribute ~1750 NJ probable deaths added on 2020-06-25
-    for place in ['NJ', 'US']:
-        util.redistribute(data[place]['data'], '2020-6-25', 1750, 60)
-
     # Redistribute incident deaths from other places/dates
     util.redistribute(data['IL']['data'], '2020-07-07', 225, 30)
     util.redistribute(data['DE']['data'], '2020-07-24', 45, 30)
