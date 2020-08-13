@@ -26,13 +26,11 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
-
-    # Redistribute ~1750 NJ probable deaths added on 2020-06-25
-    for place in ['NJ', 'US']:
-         data[place]['data'].loc['2020-06-01':'2020-06-24', 'death'] += (1750 // 24) * onp.arange(1, 25)
-
-    # Redistribute ~225 IL probable deaths added on 2020-07-07
-    data['IL']['data'].loc['2020-06-07':'2020-07-06', 'death'] += (225 // 30) * onp.arange(1, 31)
+    # Redistribute incident deaths from other places/dates
+    util.redistribute(data['IL']['data'], '2020-07-07', 225, 30)
+    util.redistribute(data['DE']['data'], '2020-07-24', 45, 30)
+    util.redistribute(data['MO']['data'], '2020-07-23', 25, 30)
+    util.redistribute(data['TX']['data'], '2020-07-27', 550, 30)
 
     if args.run:
         util.run_place(data,
