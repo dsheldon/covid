@@ -49,10 +49,12 @@ def filter_counties(df):
     '''Filter rows from JHU data schema to counties represented in forecast hub'''
     fips_codes = get_fips_codes()
     
-    exclude_counties = ['Kings, New York, US', 
-                        'Queens, New York, US', 
-                        'Bronx, New York, US', 
-                        'Richmond, New York, US']
+#     exclude_counties = ['Kings, New York, US', 
+#                         'Queens, New York, US', 
+#                         'Bronx, New York, US', 
+#                         'Richmond, New York, US']
+
+    exclude_counties = []
     
     # Subset to locations: 
     #   (1) in US,
@@ -126,7 +128,7 @@ def load_us(counties=False):
             df = filter_counties(df)
             state = df['Province_State'].replace(states.abbrev)
             county = df['Admin2']
-            county = county.replace({'New York': 'New York City'}) # correct inconsistency with metadata table
+            #county = county.replace({'New York': 'New York City'}) # correct inconsistency with metadata table
             df = df.drop(columns=meta_cols)
             df = df.set_index(state + '-' + county)
 

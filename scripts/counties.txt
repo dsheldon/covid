@@ -1,5 +1,4 @@
 CA-Los Angeles
-NY-New York City
 IL-Cook
 TX-Harris
 AZ-Maricopa
@@ -7,8 +6,10 @@ CA-San Diego
 CA-Orange
 FL-Miami-Dade
 TX-Dallas
+NY-Kings
 CA-Riverside
 NV-Clark
+NY-Queens
 WA-King
 CA-San Bernardino
 TX-Tarrant
@@ -17,12 +18,14 @@ FL-Broward
 CA-Santa Clara
 MI-Wayne
 CA-Alameda
+NY-New York
 MA-Middlesex
 PA-Philadelphia
 CA-Sacramento
 FL-Palm Beach
 NY-Suffolk
 FL-Hillsborough
+NY-Bronx
 FL-Orange
 NY-Nassau
 OH-Franklin
@@ -141,6 +144,7 @@ IA-Polk
 WA-Clark
 IN-Lake
 ID-Ada
+NY-Richmond
 FL-Seminole
 NV-Washoe
 VA-Prince William
@@ -976,8 +980,8 @@ PA-Venango
 IL-Ogle
 IL-Coles
 VA-Henry
-ME-Somerset
 MN-Winona
+ME-Somerset
 MD-Queen Anne's
 TX-Navarro
 WA-Whitman
@@ -1253,8 +1257,8 @@ NY-Essex
 VT-Addison
 OH-Williams
 TX-Howard
-MN-Steele
 TX-Hill
+MN-Steele
 TX-Matagorda
 AL-Escambia
 OH-Coshocton
@@ -1276,8 +1280,8 @@ ME-Sagadahoc
 MO-Barry
 MI-Delta
 IN-Adams
-GA-Ware
 UT-Uintah
+GA-Ware
 MO-Laclede
 MI-Houghton
 MO-Warren
@@ -1387,8 +1391,8 @@ ME-Washington
 GA-Gilmer
 LA-Jefferson Davis
 OH-Hardin
-MN-Polk
 ND-Morton
+MN-Polk
 NE-Adams
 AL-Franklin
 VA-Petersburg
@@ -1579,8 +1583,8 @@ FL-Washington
 MI-Gladwin
 IN-Posey
 MO-Texas
-MO-Audrain
 CO-Teller
+MO-Audrain
 VT-Lamoille
 TX-Fayette
 MO-Adair
@@ -1672,8 +1676,8 @@ WV-Hampshire
 TX-Bandera
 IN-Fayette
 VA-New Kent
-TX-Hockley
 ID-Blaine
+TX-Hockley
 MO-Ray
 IN-Starke
 TX-Houston
@@ -1845,8 +1849,8 @@ OK-McIntosh
 NM-Lincoln
 GA-Long
 NC-Northampton
-IL-Douglas
 GA-Pierce
+IL-Douglas
 AL-Butler
 MO-Benton
 IA-Jackson
@@ -1897,8 +1901,8 @@ FL-Madison
 KS-Dickinson
 SD-Beadle
 TX-Burleson
-AK-Bethel
 GA-Appling
+AK-Bethel
 TX-Eastland
 MS-Stone
 GA-Greene
@@ -1960,8 +1964,8 @@ KY-McCreary
 AL-Henry
 CA-Mariposa
 IL-Edgar
-VA-King William
 VA-Buckingham
+VA-King William
 GA-Rabun
 MS-Chickasaw
 MO-New Madrid
@@ -1987,8 +1991,8 @@ VA-Giles
 AR-Jackson
 TX-Scurry
 GA-Ben Hill
-KY-Rockcastle
 WV-Taylor
+KY-Rockcastle
 AR-Marion
 TN-Wayne
 ID-Idaho
@@ -2106,8 +2110,8 @@ MO-Gasconade
 TN-Cannon
 OK-Choctaw
 KY-Trigg
-AL-Hale
 TX-Trinity
+AL-Hale
 VA-Clarke
 VA-Falls Church
 KY-Pendleton
@@ -2150,14 +2154,14 @@ OK-Murray
 SD-Clay
 SC-Bamberg
 IA-Harrison
-MI-Crawford
 CO-Archuleta
+MI-Crawford
 IN-Newton
 MI-Gogebic
 GA-Screven
 WV-Braxton
-TX-Callahan
 NC-Chowan
+TX-Callahan
 LA-Winn
 AK-Ketchikan Gateway
 IL-Washington
@@ -2170,8 +2174,8 @@ WV-Hardy
 AL-Crenshaw
 IL-Massac
 OK-Atoka
-IA-O'Brien
 MT-Glacier
+IA-O'Brien
 WA-Pend Oreille
 TN-Stewart
 WV-Roane
@@ -2269,8 +2273,8 @@ IA-Grundy
 MN-Koochiching
 MT-Jefferson
 TX-Live Oak
-IL-Menard
 VA-Lunenburg
+IL-Menard
 CO-Prowers
 KY-Magoffin
 KY-Edmonson
@@ -2354,8 +2358,8 @@ KY-Owen
 MN-Watonwan
 NC-Camden
 LA-West Carroll
-GA-Candler
 MT-Richland
+GA-Candler
 MI-Mackinac
 NM-Sierra
 NE-Box Butte
@@ -2363,8 +2367,8 @@ NE-Custer
 IL-Cumberland
 AR-Bradley
 IN-Switzerland
-TX-Franklin
 MT-Carbon
+TX-Franklin
 NE-Red Willow
 AR-Pike
 NE-Colfax
@@ -2524,8 +2528,8 @@ GA-Wilcox
 MS-Wilkinson
 IA-Monona
 MT-Dawson
-MT-Madison
 IA-Lucas
+MT-Madison
 WV-Tyler
 NE-Dawes
 TX-Archer
@@ -2559,8 +2563,8 @@ AR-Nevada
 WV-Pocahontas
 MI-Oscoda
 TX-San Augustine
-MS-Choctaw
 KY-Lyon
+MS-Choctaw
 MI-Baraga
 CO-Conejos
 TN-Houston
@@ -2721,11 +2725,11 @@ VA-Bland
 MO-Reynolds
 CO-Gilpin
 MT-Broadwater
-TX-Garza
 MI-Luce
+TX-Garza
 MN-Wilkin
-NE-Clay
 AK-Prince of Wales-Hyder
+NE-Clay
 GA-Talbot
 GA-Calhoun
 SD-Hamlin
@@ -2763,8 +2767,8 @@ IL-Putnam
 TX-Crosby
 MI-Ontonagon
 GA-Miller
-OK-Greer
 TX-Floyd
+OK-Greer
 KS-Ottawa
 OK-Alfalfa
 CO-Lincoln
@@ -2902,8 +2906,8 @@ ND-Sargent
 CO-Costilla
 OK-Ellis
 TX-Reagan
-ID-Lewis
 KS-Kearny
+ID-Lewis
 ND-Wells
 TX-Fisher
 SD-Edmunds
@@ -2965,8 +2969,8 @@ NE-Brown
 SD-Douglas
 TX-Collingsworth
 NE-Perkins
-KS-Jewell
 ND-Nelson
+KS-Jewell
 SD-Perkins
 TX-Cochran
 MT-Fallon
@@ -2992,9 +2996,9 @@ GA-Webster
 ID-Butte
 KS-Morton
 KS-Hamilton
+KS-Elk
 KS-Rawlins
 AK-Haines
-KS-Elk
 KS-Sheridan
 AK-Wrangell
 ND-Hettinger
@@ -3003,23 +3007,24 @@ UT-Rich
 KS-Graham
 ND-Kidder
 KS-Kiowa
+AK-Bristol Bay plus Lake Peninsula
 SD-McPherson
-NE-Greeley
 WY-Niobrara
+NE-Greeley
 SD-Sanborn
 MT-Liberty
 ND-Renville
-SD-Faulk
 GA-Quitman
+SD-Faulk
 ND-Eddy
-TX-Jeff Davis
 ND-Grant
+TX-Jeff Davis
 ND-Divide
 CO-Sedgwick
 ND-Griggs
 WA-Garfield
-SD-Miner
 ND-Adams
+SD-Miner
 TX-Dickens
 VA-Highland
 ND-Towner
@@ -3057,8 +3062,8 @@ MT-Meagher
 ND-Logan
 NE-Garden
 CO-Cheyenne
-KS-Hodgeman
 NE-Deuel
+KS-Hodgeman
 OR-Sherman
 ND-Golden Valley
 NM-De Baca
@@ -3107,7 +3112,6 @@ SD-Jones
 NV-Esmeralda
 TX-Roberts
 ID-Clark
-AK-Bristol Bay
 MT-Golden Valley
 CO-Hinsdale
 NE-Keya Paha
