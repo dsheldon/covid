@@ -9,14 +9,17 @@ import argparse
 
 from pathlib import Path
 
-#config_names=['resample_80_last_10']
-#forecast_dates = ['2020-07-05']
+root='results1'
 
 config_names=['counties']
 forecast_dates=["2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05"]
 forecast_dates=["2020-06-07", "2020-07-05"]
 eval_date = '2020-07-09'
-root='results1'
+
+config_names=['longer_H', 'resample_80_last_10']
+forecast_dates = ['2020-08-16', '2020-08-23', '2020-08-30', '2020-09-06']
+eval_date = '2020-09-12'
+
 
 def write_summary(summary, filename):
     summary = summary.reset_index(drop=True)
@@ -40,7 +43,7 @@ if __name__ == "__main__":
 
     # Set places
     if args.places == 'US':
-        places == ['US']
+        places = ['US']
         suffix = '-US'
     elif args.places == 'states':
         places = list(jhu.get_state_info().sort_index().index)

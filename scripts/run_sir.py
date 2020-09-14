@@ -26,11 +26,18 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
-    # Redistribute ~1750 NJ probable deaths added on 2020-06-25
-    for place in ['NJ', 'US']:
-        util.redistribute(data[place]['data'], '2020-6-25', 1750, 60)
 
-    # Redistribute incident deaths from other places/dates
+    # My best reconstruction of MO backlogs reports ~Sep 5-6. Information
+    # here (https://twitter.com/HealthyLivingMo) but exact numbers don't
+    # match JHU data, so I redistributed as best I could
+    util.redistribute(data['MO']['data'], '2020-09-04', 16, 60)
+    util.redistribute(data['MO']['data'], '2020-09-05', 56, 60)
+    util.redistribute(data['MO']['data'], '2020-09-06', 15, 60)
+
+    # MA changed definition of confirmed case
+    util.redistribute(data['MA']['data'], '2020-09-03', -7936, 90, col='confirmed')
+
+    # Redistribute incident deaths
     util.redistribute(data['IL']['data'], '2020-07-07', 225, 30)
     util.redistribute(data['DE']['data'], '2020-07-24', 45, 30)
     util.redistribute(data['MO']['data'], '2020-07-23', 25, 30)

@@ -42,6 +42,18 @@ resample_80_last_10 = {
     }
 }
 
+# State and US forecasts starting 2020-09-06
+longer_H = {
+    'model': covid.models.SEIRD_incident.SEIRD,
+    'args'  : {
+        'gamma_shape':  100,
+        'sigma_shape':  100,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'H_duration_est': 18.0
+    }
+}
+
 counties = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {
@@ -53,3 +65,5 @@ counties = {
         'T_future': 8*7
     }
 }
+
+
