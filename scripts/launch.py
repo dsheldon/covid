@@ -81,7 +81,7 @@ if __name__ == "__main__":
 --error="{logdir}/{place}.err" \
 --nodes=1 \
 --ntasks=1 \
---mem=4000 \
+--mem=1000 \
 --partition=defq \
 ./run_sir.sh "{place}" --start {start} --end {forecast_date} --config {config} --prefix {prefix} {extra_args}'''
                                 
