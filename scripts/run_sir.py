@@ -26,6 +26,75 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
+    # MI and PA don't report on Sundays
+    data['MI']['data'].loc['2020-09-27', 'confirmed'] = onp.nan
+    data['MI']['data'].loc['2020-09-27', 'death'] = onp.nan
+
+    data['PA']['data'].loc['2020-09-27', 'confirmed'] = onp.nan
+    data['PA']['data'].loc['2020-09-27', 'death'] = onp.nan
+
+    # RI doesn't report on Saturdays/Sundays
+    data['RI']['data'].loc['2020-09-26', 'confirmed'] = onp.nan
+    data['RI']['data'].loc['2020-09-27', 'confirmed'] = onp.nan
+    data['RI']['data'].loc['2020-09-26', 'death'] = onp.nan
+    data['RI']['data'].loc['2020-09-27', 'death'] = onp.nan
+
+
+
+    # Texas large backlogs on 9/21 and 9/22
+
+    # 9/21 - 2,078 older case recently reported by labs were included
+    #        in the statewide total but excluded from statewide and
+    #        Bexar County new confirmed cases (103).  3 older cases
+    #        recently reported by labs were included in the statewide
+    #        total but excluded from statewide and Collin County new
+    #        confirmed cases (42).  306 older case recently reported
+    #        by labs were included in the statewide total but excluded
+    #        from statewide and Dallas County new confirmed cases
+    #        (465).  298 older cases recently reported by labs were
+    #        included in the statewide total but excluded from
+    #        statewide and Frio County new confirmed cases (1).  328
+    #        older cases recently reported by labs were included in
+    #        the statewide total but excluded from statewide and
+    #        Harris County new confirmed cases (225).  1 older case
+    #        recently reported by labs was included in the statewide
+    #        total but excluded from statewide and Houston County new
+    #        confirmed cases (2).  125 older cases recently reported
+    #        by labs were included in the statewide total but excluded
+    #        from statewide and Tarrant County new confirmed cases
+    #        (203).
+
+    #
+    # 9/22 - 2 older cases recently reported by labs were included in 
+    #        the statewide total but excluded from statewide and
+    #        Dallas County new confirmed cases (314).  13,622 older
+    #        cases recently reported by labs were included in the
+    #        statewide total but excluded from statewide and Harris
+    #        County new confirmed cases (507).  231 older cases
+    #        recently reported by labs were included in the statewide
+    #        total but excluded from statewide and Nueces County new
+    #        confirmed cases (1).  1 older cases recently reported by
+    #        labs was included in the statewide total but excluded
+    #        from statewide and San Jacinto County new confirmed cases
+    #        (0).
+
+    # As nearly as I can tell the notes above apply to the previous day
+    util.redistribute(data['TX']['data'], '2020-09-20', 2078 + 3 + 306 + 298 + 328 + 1 + 125, 90, 'confirmed')
+    util.redistribute(data['TX']['data'], '2020-09-21', 13622 + 231 + 1, 90, 'confirmed')
+
+    # 4,563 new cases 25Sep20 due to the cumulative antigen testing https://covid19.ncdhhs.gov/dashboard 
+    util.redistribute(data['NC']['data'], '2020-09-25', 4563, 90, 'confirmed')
+
+    # 139 probable deaths added on Sep 15 https://katv.com/news/local/arkansas-gov-asa-hutchinson-to-give-covid-19-briefing-09-15-2020
+    util.redistribute(data['AR']['data'], '2020-09-15', 139, 30, 'death')
+
+    # 577 backlog cases on Sep 17 https://directorsblog.health.azdhs.gov/covid-19-antigen-tests/
+    # 764 backlog cases on Sep 18 https://twitter.com/AZDHS
+    util.redistribute(data['AZ']['data'], '2020-09-17', 577, 90, 'confirmed')
+    util.redistribute(data['AZ']['data'], '2020-09-18', 764, 90, 'confirmed')
+
+    # Correct values 9/15 through 9/20 are: 91,304 92,712 94,746 97,279 99,562 101,227 (source: https://www.dhs.wisconsin.gov/covid-19/cases.htm)
+    data['WI']['data'].loc['2020-09-15':'2020-09-20', 'confirmed'] = [91304, 92712, 94746, 97279, 99562, 101227]
 
     # My best reconstruction of MO backlogs reports ~Sep 5-6. Information
     # here (https://twitter.com/HealthyLivingMo) but exact numbers don't
@@ -42,6 +111,11 @@ if __name__ == "__main__":
     util.redistribute(data['DE']['data'], '2020-07-24', 45, 30)
     util.redistribute(data['MO']['data'], '2020-07-23', 25, 30)
     util.redistribute(data['TX']['data'], '2020-07-27', 550, 30)
+
+    # PA stopped reporting on Sundays on 2020-09-13. This is the first
+    # zero count in the data, so is highly influential. Temporarily
+    # impute a reasonable value for cases. Leave deaths alone.
+    # data['PA']['data'].loc['2020-09-13', 'confirmed'] = 149567
 
     if args.run:
         util.run_place(data,
