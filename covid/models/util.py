@@ -193,6 +193,10 @@ def clean_daily_obs(obs, radius=2):
     
     orig_obs = obs
     
+    # Subset to valid indices
+    inds = onp.isfinite(obs)
+    obs = obs[inds]
+    
     obs = onp.array(obs)
     bad = onp.argwhere(obs < 0)
 
@@ -225,12 +229,10 @@ def clean_daily_obs(obs, radius=2):
         obs[left:right] = avg
         obs[left:(left+rem)] += 1
             
-    assert(orig_obs.sum() == obs.sum())
+    assert(onp.nansum(orig_obs) == onp.nansum(obs))
     
-    return obs
-
-# def clean_daily_obs(obs):
-#     return obs
+    orig_obs[inds] = obs    
+    return orig_obs
 
 
 def get_future_data(data, T, offset=1):
