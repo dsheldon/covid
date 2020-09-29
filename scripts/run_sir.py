@@ -27,19 +27,32 @@ if __name__ == "__main__":
     data = config.get('data') or util.load_data()
 
     # MI and PA don't report on Sundays
-    data['MI']['data'].loc['2020-09-27', 'confirmed'] = onp.nan
-    data['MI']['data'].loc['2020-09-27', 'death'] = onp.nan
+    for place in ['MI', 'PA']:
+        data[place]['data'].loc['2020-09-27', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-09-27', 'death'] = onp.nan
 
-    data['PA']['data'].loc['2020-09-27', 'confirmed'] = onp.nan
-    data['PA']['data'].loc['2020-09-27', 'death'] = onp.nan
-
-    # RI doesn't report on Saturdays/Sundays
-    data['RI']['data'].loc['2020-09-26', 'confirmed'] = onp.nan
-    data['RI']['data'].loc['2020-09-27', 'confirmed'] = onp.nan
-    data['RI']['data'].loc['2020-09-26', 'death'] = onp.nan
-    data['RI']['data'].loc['2020-09-27', 'death'] = onp.nan
+    # RI, CT, GU don't report on Saturdays/Sundays
+    for place in ['RI', 'CT', 'GU']:
+        data[place]['data'].loc['2020-09-26', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-09-27', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-09-26', 'death'] = onp.nan
+        data[place]['data'].loc['2020-09-27', 'death'] = onp.nan
 
 
+    # MO dept. of health and human services reports 129 excess deaths
+    # added to the system ~Mon-Wed 9/21-9/23 and 63 added on 9/26.
+    # These jumps don't seem to match what appears in JHU data, so
+    # I am redistributing a similar (slightly smaller) number 
+    # of deaths from multiple days during the week
+    # https://twitter.com/HealthyLivingMo    
+    #
+    # Update: these caused instability in fitting so I tweaked them 
+    # manually and redistributed fewer deaths
+    util.redistribute(data['MO']['data'], '2020-09-22', 10, 60, 'death')
+    util.redistribute(data['MO']['data'], '2020-09-23', 25, 60, 'death')
+    util.redistribute(data['MO']['data'], '2020-09-25', 10, 60, 'death')
+    util.redistribute(data['MO']['data'], '2020-09-26', 25, 60, 'death')
+    util.redistribute(data['MO']['data'], '2020-09-27', -4, 60, 'death') # to avoid -1 deaths on last observed day
 
     # Texas large backlogs on 9/21 and 9/22
 
@@ -104,7 +117,9 @@ if __name__ == "__main__":
     util.redistribute(data['MO']['data'], '2020-09-06', 15, 60)
 
     # MA changed definition of confirmed case
-    util.redistribute(data['MA']['data'], '2020-09-03', -7936, 90, col='confirmed')
+    #   fixed in JHU data on Sep 22: 
+    #   https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data#retrospective-reporting-of-probable-cases-and-deaths
+    # util.redistribute(data['MA']['data'], '2020-09-03', -7936, 90, col='confirmed')
 
     # Redistribute incident deaths
     util.redistribute(data['IL']['data'], '2020-07-07', 225, 30)

@@ -17,8 +17,8 @@ forecast_dates=["2020-06-07", "2020-07-05"]
 eval_date = '2020-07-09'
 
 config_names=['llonger_H', 'longer_H', 'resample_80_last_10']
-forecast_dates = ['2020-08-23', '2020-08-30', '2020-09-06', '2020-09-13']
-eval_date = '2020-09-19'
+forecast_dates = ['2020-08-30', '2020-09-06', '2020-09-13', '2020-09-20']
+eval_date = '2020-09-26'
 
 
 def write_summary(summary, filename):

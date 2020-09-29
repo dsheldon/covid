@@ -95,6 +95,7 @@ class SEIRD(SEIRDBase):
                                     
         death_rate = numpyro.sample("death_rate", 
                                     dist.Gamma(10, 10 * H_duration_est))
+                                    #dist.Gamma(100, 100 * H_duration_est))
 
         if drift_scale is not None:
             drift = numpyro.sample("drift", dist.Normal(loc=0, scale=drift_scale))
