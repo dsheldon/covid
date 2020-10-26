@@ -66,6 +66,18 @@ llonger_H = {
     }
 }
 
+lllonger_H = {
+    'model': covid.models.SEIRD_incident.SEIRD,
+    'args'  : {
+        'gamma_shape':  100,
+        'sigma_shape':  100,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'H_duration_est': 35.0
+    }
+}
+
+
 
 counties = {
     'model': covid.models.SEIRD_incident.SEIRD,
