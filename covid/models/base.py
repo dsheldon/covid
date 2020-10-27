@@ -72,7 +72,7 @@ class Model():
         
         args = dict(self.args, **args)
         
-        kernel = NUTS(self, init_strategy = numpyro.infer.util.init_to_median())
+        kernel = NUTS(self, init_strategy = numpyro.infer.initialization.init_to_median())  
 
         mcmc = MCMC(kernel, 
                     num_warmup=num_warmup, 
@@ -223,7 +223,7 @@ class Model():
         fields = {f: 0.0 + self.get(samples, f, forecast=forecast)[:,:T] for f in plot_fields}
         names = {f: self.names[f] for f in plot_fields}
                 
-        medians = {names[f]: np.median(v, axis=0) for f, v in fields.items()}
+        medians = {names[f]: onp.median(onp.array(v), axis=0) for f, v in fields.items()}
 
         t = pd.date_range(start=start, periods=T, freq='D')
 
@@ -247,11 +247,11 @@ class Model():
         for interval in intervals:
             low=(100.-interval)/2
             high=100.-low
-            pred_intervals = {names[f]: np.percentile(v, (low, high), axis=0) for f, v in fields.items()}
+            pred_intervals = {names[f]: onp.percentile(onp.array(v), (low, high), axis=0) for f, v in fields.items()}
             for i, pi in enumerate(pred_intervals.values()):
                 h = ax.fill_between(t, pi[0,:], pi[1,:], alpha=0.1, color=colors[i], label=interval)
                 handles.append(h)
-                pi_max = np.maximum(pi_max, np.nanmax(pi[1,:]))
+                pi_max = onp.maximum(pi_max, onp.nanmax(pi[1,:]))
 
         
         return median_max, pi_max

@@ -1,3 +1,6 @@
+import numpyro
+numpyro.enable_x64()
+
 import sys
 import argparse
 import covid.util as util
