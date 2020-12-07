@@ -510,6 +510,9 @@ def score_forecast(forecast_date,
             # Compute MAE
             summary.loc[date, 'MAE'] = rows['err'].abs().mean()
         
+            # Compute MAE
+            summary.loc[date, 'medAE'] = rows['err'].abs().median()
+
             # Compute avg. log-score
             summary.loc[date, 'log_score'] = rows['log_score'].mean()
         
