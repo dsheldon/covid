@@ -54,7 +54,7 @@ longer_H = {
     }
 }
 
-# State and US forecasts starting 2020-09-20
+# State and US forecasts starting 2020-09-20, except 2020-10-20
 llonger_H = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {
@@ -66,6 +66,7 @@ llonger_H = {
     }
 }
 
+# State and US forecasts 2020-10-20
 lllonger_H = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {

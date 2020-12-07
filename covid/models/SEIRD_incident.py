@@ -98,9 +98,9 @@ class SEIRD(SEIRDBase):
                                     #dist.Gamma(100, 100 * H_duration_est))
 
         if drift_scale is not None:
-            drift = numpyro.sample("drift", dist.Normal(loc=0, scale=drift_scale))
+            drift = numpyro.sample("drift", dist.Normal(loc=0., scale=drift_scale))
         else:
-            drift = 0
+            drift = 0.
 
 
         x0 = SEIRDModel.seed(N=N, I=I0, E=E0, H=H0, D=D0)
@@ -120,10 +120,10 @@ class SEIRD(SEIRDBase):
             death = clean_daily_obs(onp.diff(death))
         
         # First observation
-        with numpyro.handlers.scale(scale_factor=0.5):
+        with numpyro.handlers.scale(scale=0.5):
             y0 = observe_nb2("dy0", x0[6], det_prob0, confirmed_dispersion, obs=confirmed0)
             
-        with numpyro.handlers.scale(scale_factor=2.0):
+        with numpyro.handlers.scale(scale=2.0):
             z0 = observe_nb2("dz0", x0[5], det_prob_d, death_dispersion, obs=death0)
 
         params = (beta0, 
@@ -199,7 +199,7 @@ class SEIRD(SEIRDBase):
         det_prob = numpyro.sample("det_prob" + suffix,
                                   LogisticRandomWalk(loc=det_prob0, 
                                                      scale=rw_scale, 
-                                                     drift=0,
+                                                     drift=0.,
                                                      num_steps=T-1))
 
         # Run ODE
@@ -210,10 +210,10 @@ class SEIRD(SEIRDBase):
         x_diff = np.diff(x, axis=0)
 
         # Noisy observations
-        with numpyro.handlers.scale(scale_factor=0.5):
-            y = observe_nb2("dy" + suffix, x_diff[:,6], det_prob, confirmed_dispersion, obs = confirmed)   
+        with numpyro.handlers.scale(scale=0.5):
+            y = observe_nb2("dy" + suffix, x_diff[:,6], det_prob, confirmed_dispersion, obs = confirmed)
 
-        with numpyro.handlers.scale(scale_factor=2.0):
+        with numpyro.handlers.scale(scale=2.0):
             z = observe_nb2("dz" + suffix, x_diff[:,5], det_prob_d, death_dispersion, obs = death)  
 
         

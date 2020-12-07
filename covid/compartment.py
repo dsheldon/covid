@@ -1,6 +1,8 @@
 import jax
 from jax.experimental.ode import odeint
 import jax.numpy as np
+import numpy as onp
+
 
 class CompartmentModel(object):
     '''
@@ -23,7 +25,7 @@ class CompartmentModel(object):
         # Theta is a tuple of parameters. Entries are 
         # scalars or vectors of length T-1
         is_scalar = [np.ndim(a)==0 for a in theta]
-        if np.all(is_scalar):
+        if onp.all(is_scalar):
             return cls._run_static(T, x0, theta, **kwargs) 
         else:
             return cls._run_time_varying(T, x0, theta, **kwargs)

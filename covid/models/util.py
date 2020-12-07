@@ -127,7 +127,7 @@ def observe_normal(name, latent, det_rate, det_noise_scale, obs=None):
     
     numpyro.deterministic("mean_" + name, mean)
     
-    with numpyro.handlers.mask(mask_array=mask):
+    with numpyro.handlers.mask(mask=mask):
         y = numpyro.sample(name, d, obs = obs)
         
     return y
@@ -146,7 +146,7 @@ def observe_poisson(name, latent, det_prob, obs=None):
     d = dist.Poisson(mean)    
     numpyro.deterministic("mean_" + name, mean)
     
-    with numpyro.handlers.mask(mask_array=mask):
+    with numpyro.handlers.mask(mask=mask):
         y = numpyro.sample(name, d, obs = obs)
         
     return y
@@ -158,9 +158,10 @@ def observe_nb2(name, latent, det_prob, dispersion, obs=None):
     if obs is not None:
         mask = np.isfinite(obs) & (obs >= 0.0)
         obs = np.where(mask, obs, 0.0)
-        
-    if np.any(np.logical_not(mask)):
-        warnings.warn('Some observed values are invalid')
+
+    # --> gives error with newer jax/numpyro (on swarm2, with numpyro.enable_x64())
+    #if onp.any(np.logical_not(mask)):
+    #    warnings.warn('Some observed values are invalid')
                 
     det_prob = np.broadcast_to(det_prob, latent.shape)
 
@@ -169,7 +170,7 @@ def observe_nb2(name, latent, det_prob, dispersion, obs=None):
     
     d = NB2(mu=mean, k=dispersion)
     
-    with numpyro.handlers.mask(mask_array=mask):
+    with numpyro.handlers.mask(mask=mask):
         y = numpyro.sample(name, d, obs = obs)
         
     return y

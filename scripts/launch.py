@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     # dates
     parser.add_argument('--start', help='start date', default='2020-03-04')
-    parser.add_argument('--forecast_dates', nargs="+", help='forecast dates', default=TODAY)
+    parser.add_argument('--forecast_dates', nargs="+", help='forecast dates', default=[TODAY])
     parser.add_argument('--num_sundays', help="use the last n sundays as forecast dates", type=int, default=None)
 
     # other
