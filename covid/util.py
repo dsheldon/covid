@@ -135,16 +135,30 @@ def redistribute(df, date, n, k, col='death'):
     #   --> n/3 incident deaths on days t-2, t-1, 2
     # 
     # the cumulative number by day t does not change
-        
-    a = n // (k-1)
-    b = n % (k-1)
     
-    new_incident = a * onp.ones(k-1)
+    ndays = onp.abs(k)
+    
+    a = n // ndays
+    b = n % ndays
+    
+    new_incident = a * onp.ones(ndays)
     new_incident[:b] += 1
-    new_cumulative = onp.cumsum(new_incident)    
     
     date = pd.to_datetime(date)
-    days = pd.date_range(end=date-pd.Timedelta('1d'), periods=k-1)
+    
+    if k > 0:
+        new_incident = onp.concatenate([new_incident, [-n]])
+        new_cumulative = onp.cumsum(new_incident)    
+        end = date 
+        start = date - pd.Timedelta('1d') * ndays
+    else:
+        new_incident = onp.concatenate([[-n], new_incident])
+        new_cumulative = onp.cumsum(new_incident)    
+        start = date
+        end = date + pd.Timedelta('1d') * ndays
+    
+    days = pd.date_range(start=start, end=end)
+    #days = pd.date_range(end=date-pd.Timedelta('1d'), periods=k-1)
     
     df.loc[days, col] += new_cumulative
 
