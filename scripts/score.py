@@ -12,13 +12,17 @@ from pathlib import Path
 root='results1'
 
 config_names=['counties']
-forecast_dates=["2020-05-17", "2020-05-24", "2020-05-31", "2020-06-07", "2020-06-14", "2020-06-21", "2020-06-28", "2020-07-05"]
-forecast_dates=["2020-06-07", "2020-07-05"]
-eval_date = '2020-07-09'
+forecast_dates=['2020-10-04']
+eval_date = '2020-10-31'
 
-config_names=['lllonger_H', 'llonger_H', 'longer_H', 'resample_80_last_10']
-forecast_dates = ['2020-09-20', '2020-09-27', '2020-10-04', '2020-10-11']
-eval_date = '2020-10-17'
+config_names=['lllonger_H', 'llonger_H', 'longer_H']
+forecast_dates = ['2020-10-04', '2020-10-11', '2020-10-18', '2020-10-25']
+eval_date = '2020-10-31'
+
+
+config_names=['resample_80_last_10']
+forecast_dates = ['2020-06-28', '2020-07-05', '2020-07-12', '2020-07-19']
+eval_date = '2020-07-25'
 
 
 def write_summary(summary, filename):

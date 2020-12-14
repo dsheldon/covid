@@ -29,25 +29,82 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
+    # 2020-12-14 adjustments
+    data['US']['data'].loc['2020-12-13', 'case'] = onp.nan
+    data['US']['data'].loc['2020-12-13', 'death'] = onp.nan
+    data['ND']['data'].loc['2020-12-13', 'death'] = onp.nan
+    data['IA']['data'].loc['2020-12-12', 'death'] = onp.nan
+    data['IA']['data'].loc['2020-12-13', 'death'] = onp.nan
+    data['ID']['data'].loc['2020-12-13', 'confirmed'] = onp.nan
+    data['ID']['data'].loc['2020-12-13', 'death'] = onp.nan
+    data['NJ']['data'].loc['2020-12-13', 'confirmed'] = onp.nan
+    data['NJ']['data'].loc['2020-12-13', 'death'] = onp.nan
+    data['CO']['data'].loc['2020-12-13', 'confirmed'] = onp.nan
+
+
+    # 2020-12-07: manual smoothing of MA/ME data on Thanksgiving and following
+    util.redistribute(data['MA']['data'], '2020-11-26', -3000, -7, 'confirmed')
+    util.redistribute(data['MA']['data'], '2020-11-27', 500, 1, 'confirmed')
+    util.redistribute(data['MA']['data'], '2020-11-30', -1500, -6, 'confirmed')
+    util.redistribute(data['MA']['data'], '2020-12-03', 1500, 7, 'confirmed')
+
+    util.redistribute(data['ME']['data'], '2020-11-27', -200, -7, 'confirmed')
+    util.redistribute(data['ME']['data'], '2020-11-28', -200, -7, 'confirmed')
+    util.redistribute(data['ME']['data'], '2020-12-03', 60, 7, 'confirmed')
+
+
     # MI doesn't report on Sundays
     #   Oct 19 - add MS
     for place in ['MI', 'NH', 'MS']:
-        data[place]['data'].loc['2020-10-25', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-10-25', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-13', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-13', 'death'] = onp.nan
 
     # RI, CT, GU don't report on Saturdays/Sundays
     #   Oct 19 -- add WI (removed Oct 25)
     #   Oct 18 -- add KS
     for place in ['RI', 'CT', 'GU', 'KS']:
-        data[place]['data'].loc['2020-10-24', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-10-25', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-10-24', 'death'] = onp.nan
-        data[place]['data'].loc['2020-10-25', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-12', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-13', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-12', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-13', 'death'] = onp.nan
 
     # WA no deaths on weekends: https://www.doh.wa.gov/Emergencies/COVID19/DataDashboard
     for place in ['WA']:
-        data[place]['data'].loc['2020-10-24', 'death'] = onp.nan
-        data[place]['data'].loc['2020-10-25', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-12', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-13', 'death'] = onp.nan
+
+
+    # https://www.doh.wa.gov/Newsroom/Articles/ID/2508/Department-of-Health-improves-how-it-reports-COVID-19-deaths
+    util.redistribute(data['WA']['data'], '2020-12-10', -214, 90, 'death')
+
+    # 1922 antigen tests first reported on Dec 9th. 
+    # https://www.health.nd.gov/news/positive-covid-19-test-results-249
+    util.redistribute(data['ND']['data'], '2020-12-09', 1922, 60, 'confirmed')
+
+    # Iowa deaths messed up due to change in reporting. Pieced together
+    # by using Covid Tracking and news reports
+    #
+    # https://twitter.com/natalie_krebs?lang=en
+    # https://www.iowapublicradio.org/health/2020-12-08/iowa-officials-announce-change-in-methodology-that-raises-covid-19-death-count-by-175
+    data['IA']['data'].loc['2020-12-7':'2020-12-12','death'] = [2919, 3021, 3120, 3197, 3212, 3213]
+    util.redistribute(data['IA']['data'], '2020-12-07', 175, 60, 'death')
+
+    # AL antigen backlogs in December
+    # (https://alpublichealth.maps.arcgis.com/apps/opsdashboard/index.html#/6d2771faa9da4a2786a509d82c8cf0f7)
+    util.redistribute(data['AL']['data'], '2020-12-02', 706, 60, 'confirmed')
+    util.redistribute(data['AL']['data'], '2020-12-08', 1038 + 473, 60, 'confirmed')
+    util.redistribute(data['AL']['data'], '2020-12-10', 473, 60, 'confirmed')
+    util.redistribute(data['AL']['data'], '2020-12-12', 398, 60, 'confirmed')
+
+    #  13000 case backlog (JHU CSSE)
+    util.redistribute(data['OH']['data'], '2020-12-08', 13000, 60, 'confirmed')
+
+    # JHU redistribution error for WI
+    util.redistribute(data['WI']['data'], '2020-10-19', 11000, 3, 'confirmed')
+
+    # GA backlog on Nov 3 (JHU CSSE)
+    util.redistribute(data['GA']['data'], '2020-11-03', 29937, 60, 'confirmed')
+    util.redistribute(data['GA']['data'], '2020-11-03', 450, 60, 'death')
 
 
     # Backlogs from LA county on 10/22, 10/23, 10/24
@@ -60,17 +117,17 @@ if __name__ == "__main__":
     #  https://github.com/CSSEGISandData/COVID-19/issues/3264
     #  - 2565 on 10/22 (appar in JHU on 10/23) - from June through Oct 18
     #  - "majority of" 1182 on 10/23 (appear in JHU on 10/24) - from April through Sep
-    util.redistribute(data['AL']['data'], '2020-10-23', 2565, 100, 'confirmed')
-    util.redistribute(data['AL']['data'], '2020-10-24', 1182, 100, 'confirmed')
+    #    util.redistribute(data['AL']['data'], '2020-10-23', 2565, 100, 'confirmed')
+    #    util.redistribute(data['AL']['data'], '2020-10-24', 1182, 100, 'confirmed')
 
 
     # NH: 129 old cases on 2020-10-02 
     # https://www.nh.gov/covid19/news/documents/covid-19-update-10022020.pdf
-    util.redistribute(data['NH']['data'], '2020-10-02', 139, 90, 'confirmed')
-    #   some gaps in JHU filled with covidtracking
-    data['NH']['data'].loc['2020-09-17', 'confirmed'] = 7814
-    data['NH']['data'].loc['2020-10-05', 'confirmed'] = 8680
-    data['NH']['data'].loc['2020-10-07', 'confirmed'] = 8800
+    # util.redistribute(data['NH']['data'], '2020-10-02', 139, 90, 'confirmed')
+    # #   some gaps in JHU filled with covidtracking
+    # data['NH']['data'].loc['2020-09-17', 'confirmed'] = 7814
+    # data['NH']['data'].loc['2020-10-05', 'confirmed'] = 8680
+    # data['NH']['data'].loc['2020-10-07', 'confirmed'] = 8800
 
     # MO dept. of health and human services reports 129 excess deaths
     # added to the system ~Mon-Wed 9/21-9/23 and 63 added on 9/26.
@@ -87,17 +144,17 @@ if __name__ == "__main__":
     # 
     # UPDATE: MO deaths is a complete mess. They seem to report backlogs
     # ~once/week. What is below now amounts to just an attempt at smoothing.
-    util.redistribute(data['MO']['data'], '2020-09-22', 20, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-09-23', 65, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-09-25', 30, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-09-26', 55, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-09-27', -4, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-10-02', 60, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-10-03', 20, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-10-09', 100, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-10-15', -100, 2, 'death')
-    util.redistribute(data['MO']['data'], '2020-10-17', 100, 30, 'death')
-    util.redistribute(data['MO']['data'], '2020-10-24', 90, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-09-22', 20, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-09-23', 65, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-09-25', 30, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-09-26', 55, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-09-27', -4, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-10-02', 60, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-10-03', 20, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-10-09', 100, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-10-15', -100, 2, 'death')
+    # util.redistribute(data['MO']['data'], '2020-10-17', 100, 30, 'death')
+    # util.redistribute(data['MO']['data'], '2020-10-24', 90, 30, 'death')
 
 
     # Texas large backlogs on 9/21 and 9/22

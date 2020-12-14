@@ -36,6 +36,8 @@ class SEIRD(SEIRDBase):
                  confirmed_dispersion=0.3,
                  death_dispersion=0.3,
                  rw_scale = 2e-1,
+                 death_prob_est=0.01,
+                 death_prob_conc=100,
                  forecast_rw_scale = 0.,
                  drift_scale = None,
                  num_frozen=0,
@@ -90,8 +92,7 @@ class SEIRD(SEIRDBase):
                                               (1-.9) * 100))
 
         death_prob = numpyro.sample("death_prob", 
-                                    dist.Beta(0.01 * 100, (1-0.01) * 100))
-                                    #dist.Beta(0.02 * 1000, (1-0.02) * 1000))  
+                                    dist.Beta(death_prob_est * death_prob_conc, (1-death_prob_est) * death_prob_conc))
                                     
         death_rate = numpyro.sample("death_rate", 
                                     dist.Gamma(10, 10 * H_duration_est))
