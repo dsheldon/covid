@@ -29,18 +29,39 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
-    # 2020-12-14 adjustments
-    data['US']['data'].loc['2020-12-13', 'case'] = onp.nan
-    data['US']['data'].loc['2020-12-13', 'death'] = onp.nan
-    data['ND']['data'].loc['2020-12-13', 'death'] = onp.nan
-    data['IA']['data'].loc['2020-12-12', 'death'] = onp.nan
-    data['IA']['data'].loc['2020-12-13', 'death'] = onp.nan
-    data['ID']['data'].loc['2020-12-13', 'confirmed'] = onp.nan
-    data['ID']['data'].loc['2020-12-13', 'death'] = onp.nan
-    data['NJ']['data'].loc['2020-12-13', 'confirmed'] = onp.nan
-    data['NJ']['data'].loc['2020-12-13', 'death'] = onp.nan
-    data['CO']['data'].loc['2020-12-13', 'confirmed'] = onp.nan
+    # Adjustments for 2020-12-20
+    data['US']['data'].loc['2020-12-20', 'confirmed'] = onp.nan
+    data['US']['data'].loc['2020-12-20', 'death'] = onp.nan
 
+
+    # MI doesn't report on Sundays
+    #   Oct 19 - add MS
+    for place in ['MI', 'NH', 'MS', 'WA']:
+        data[place]['data'].loc['2020-12-20', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-20', 'death'] = onp.nan
+
+    # RI, CT, GU don't report on Saturdays/Sundays
+    #   Oct 19 -- add WI (removed Oct 25)
+    #   Oct 18 -- add KS
+    for place in ['RI', 'CT', 'GU', 'KS']:
+        data[place]['data'].loc['2020-12-19', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-20', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-19', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-20', 'death'] = onp.nan
+
+
+    # 2020-12-20
+    # California dashboard included 15,337 historical cases in their December 16 update
+    # https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data
+    util.redistribute(data['CA']['data'], '2020-12-16', 15337, 60, 'confirmed')
+
+    # 2020-12-20
+    # manual smoothing of WA after data update left things very wonky
+    util.redistribute(data['WA']['data'], '2020-12-16', -1600, -3, 'confirmed')
+    util.redistribute(data['WA']['data'], '2020-12-16', 80, 7, 'death')
+    util.redistribute(data['WA']['data'], '2020-12-17', 25, 7, 'death')
+    util.redistribute(data['WA']['data'], '2020-12-17', 20, -1, 'death')
+    util.redistribute(data['WA']['data'], '2020-12-17', 20, -2, 'death')
 
     # 2020-12-07: manual smoothing of MA/ME data on Thanksgiving and following
     util.redistribute(data['MA']['data'], '2020-11-26', -3000, -7, 'confirmed')
@@ -51,31 +72,7 @@ if __name__ == "__main__":
     util.redistribute(data['ME']['data'], '2020-11-27', -200, -7, 'confirmed')
     util.redistribute(data['ME']['data'], '2020-11-28', -200, -7, 'confirmed')
     util.redistribute(data['ME']['data'], '2020-12-03', 60, 7, 'confirmed')
-
-
-    # MI doesn't report on Sundays
-    #   Oct 19 - add MS
-    for place in ['MI', 'NH', 'MS']:
-        data[place]['data'].loc['2020-12-13', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-13', 'death'] = onp.nan
-
-    # RI, CT, GU don't report on Saturdays/Sundays
-    #   Oct 19 -- add WI (removed Oct 25)
-    #   Oct 18 -- add KS
-    for place in ['RI', 'CT', 'GU', 'KS']:
-        data[place]['data'].loc['2020-12-12', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-13', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-12', 'death'] = onp.nan
-        data[place]['data'].loc['2020-12-13', 'death'] = onp.nan
-
-    # WA no deaths on weekends: https://www.doh.wa.gov/Emergencies/COVID19/DataDashboard
-    for place in ['WA']:
-        data[place]['data'].loc['2020-12-12', 'death'] = onp.nan
-        data[place]['data'].loc['2020-12-13', 'death'] = onp.nan
-
-
-    # https://www.doh.wa.gov/Newsroom/Articles/ID/2508/Department-of-Health-improves-how-it-reports-COVID-19-deaths
-    util.redistribute(data['WA']['data'], '2020-12-10', -214, 90, 'death')
+    
 
     # 1922 antigen tests first reported on Dec 9th. 
     # https://www.health.nd.gov/news/positive-covid-19-test-results-249

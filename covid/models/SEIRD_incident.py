@@ -50,10 +50,10 @@ class SEIRD(SEIRDBase):
         '''        
                 
         # Sample initial number of infected individuals
-        I0 = numpyro.sample("I0", dist.Uniform(0, 0.02*N))
-        E0 = numpyro.sample("E0", dist.Uniform(0, 0.02*N))
-        H0 = numpyro.sample("H0", dist.Uniform(0, 1e-3*N))
-        D0 = numpyro.sample("D0", dist.Uniform(0, 1e-3*N))
+        I0 = numpyro.sample("I0", dist.Uniform(0, 1e-4*N))
+        E0 = numpyro.sample("E0", dist.Uniform(0, 1e-4*N))
+        H0 = numpyro.sample("H0", dist.Uniform(0, 1e-4*N))
+        D0 = numpyro.sample("D0", dist.Uniform(0, 1e-4*N))
 
 
         # Sample dispersion parameters around specified values
