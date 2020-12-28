@@ -30,24 +30,24 @@ if __name__ == "__main__":
     data = config.get('data') or util.load_data()
 
     # Adjustments for 2020-12-20
-    data['US']['data'].loc['2020-12-20', 'confirmed'] = onp.nan
-    data['US']['data'].loc['2020-12-20', 'death'] = onp.nan
+    #data['US']['data'].loc['2020-12-20', 'confirmed'] = onp.nan
+    #data['US']['data'].loc['2020-12-20', 'death'] = onp.nan
 
 
     # MI doesn't report on Sundays
     #   Oct 19 - add MS
     for place in ['MI', 'NH', 'MS', 'WA']:
-        data[place]['data'].loc['2020-12-20', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-20', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-27', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-27', 'death'] = onp.nan
 
     # RI, CT, GU don't report on Saturdays/Sundays
     #   Oct 19 -- add WI (removed Oct 25)
     #   Oct 18 -- add KS
     for place in ['RI', 'CT', 'GU', 'KS']:
-        data[place]['data'].loc['2020-12-19', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-20', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-19', 'death'] = onp.nan
-        data[place]['data'].loc['2020-12-20', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-26', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-27', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2020-12-26', 'death'] = onp.nan
+        data[place]['data'].loc['2020-12-27', 'death'] = onp.nan
 
 
     # 2020-12-20
