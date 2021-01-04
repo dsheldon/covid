@@ -51,8 +51,8 @@ class SEIRD(SEIRDBase):
         '''        
                 
         # Sample initial number of infected individuals
-        I0 = numpyro.sample("I0", dist.Uniform(0, 1e-4*N))
-        E0 = numpyro.sample("E0", dist.Uniform(0, 1e-4*N))
+        I0 = numpyro.sample("I0", dist.Uniform(0, 1e-3*N))
+        E0 = numpyro.sample("E0", dist.Uniform(0, 1e-3*N))
         H0 = numpyro.sample("H0", dist.Uniform(0, 1e-4*N))
         D0 = numpyro.sample("D0", dist.Uniform(0, 1e-4*N))
 
@@ -209,13 +209,17 @@ class SEIRD(SEIRDBase):
         numpyro.deterministic("x" + suffix, x[1:])
 
         x_diff = np.diff(x, axis=0)
-
+        
+        # Don't let incident cases/deaths be exactly zero (or worse, negative!)
+        new_cases = np.maximum(x_diff[:,6], 0.01)
+        new_deaths = np.maximum(x_diff[:,5], 0.001)
+        
         # Noisy observations
         with numpyro.handlers.scale(scale=0.5):
-            y = observe_nb2("dy" + suffix, x_diff[:,6], det_prob, confirmed_dispersion, obs = confirmed)
+            y = observe_nb2("dy" + suffix, new_cases, det_prob, confirmed_dispersion, obs = confirmed)
 
         with numpyro.handlers.scale(scale=2.0):
-            z = observe_nb2("dz" + suffix, x_diff[:,5], det_prob_d, death_dispersion, obs = death)  
+            z = observe_nb2("dz" + suffix, new_deaths, det_prob_d, death_dispersion, obs = death)  
 
         
         return beta, det_prob, x, y, z
