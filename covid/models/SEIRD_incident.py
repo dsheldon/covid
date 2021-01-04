@@ -31,6 +31,7 @@ class SEIRD(SEIRDBase):
                  beta_shape = 1.,
                  sigma_shape = 100.,
                  gamma_shape = 100.,
+                 death_rate_shape = 10.,
                  det_prob_est = 0.3,
                  det_prob_conc = 50.,
                  confirmed_dispersion=0.3,
@@ -95,8 +96,7 @@ class SEIRD(SEIRDBase):
                                     dist.Beta(death_prob_est * death_prob_conc, (1-death_prob_est) * death_prob_conc))
                                     
         death_rate = numpyro.sample("death_rate", 
-                                    dist.Gamma(10, 10 * H_duration_est))
-                                    #dist.Gamma(100, 100 * H_duration_est))
+                                    dist.Gamma(death_rate_shape, death_rate_shape * H_duration_est))
 
         if drift_scale is not None:
             drift = numpyro.sample("drift", dist.Normal(loc=0., scale=drift_scale))

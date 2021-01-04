@@ -210,13 +210,13 @@ def clean_daily_obs(obs, radius=2):
             # we cleaned another bad value
             continue
         
-        left = ind - radius
-        right = ind + radius + 1
+        left = onp.maximum(ind - radius, 0)
+        right = onp.minimum(ind + radius + 1, len(obs))
         tot = onp.sum(obs[left:right])
 
         while tot < 0 and (left >= 0 or right <= len(obs)):
-            left -= 1
-            right += 1
+            left = onp.maximum(left - 1, 0)
+            right = onp.minimum(right + 1, len(obs))
             tot = onp.sum(obs[left:right])
                 
         if tot < 0:
