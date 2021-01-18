@@ -51,8 +51,8 @@ class SEIRD(SEIRDBase):
         '''        
                 
         # Sample initial number of infected individuals
-        I0 = numpyro.sample("I0", dist.Uniform(0, 1e-3*N))
-        E0 = numpyro.sample("E0", dist.Uniform(0, 1e-3*N))
+        I0 = numpyro.sample("I0", dist.Uniform(0, 1e-4*N))  # change to 1e-3 if starting on 2020-03-16
+        E0 = numpyro.sample("E0", dist.Uniform(0, 1e-4*N))  # change to 1e-3 if starting on 2020-03-16
         H0 = numpyro.sample("H0", dist.Uniform(0, 1e-4*N))
         D0 = numpyro.sample("D0", dist.Uniform(0, 1e-4*N))
 
@@ -211,8 +211,8 @@ class SEIRD(SEIRDBase):
         x_diff = np.diff(x, axis=0)
         
         # Don't let incident cases/deaths be exactly zero (or worse, negative!)
-        new_cases = np.maximum(x_diff[:,6], 0.01)
-        new_deaths = np.maximum(x_diff[:,5], 0.001)
+        new_cases = np.maximum(x_diff[:,6], 0.)
+        new_deaths = np.maximum(x_diff[:,5], 0.)
         
         # Noisy observations
         with numpyro.handlers.scale(scale=0.5):
