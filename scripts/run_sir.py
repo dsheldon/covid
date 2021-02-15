@@ -29,31 +29,123 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
-    # Adjustments for 2020-12-20
-    #data['US']['data'].loc['2020-12-20', 'confirmed'] = onp.nan
-    #data['US']['data'].loc['2020-12-20', 'death'] = onp.nan
-
-
     # MI doesn't report on Sundays
     #   Oct 19 - add MS
-    for place in ['MI', 'NH', 'MS', 'WA']:
-        data[place]['data'].loc['2020-12-27', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-27', 'death'] = onp.nan
+    for place in ['MI', 'NH', 'MS']:
+        data[place]['data'].loc['2021-02-14', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-02-14', 'death'] = onp.nan
 
     # RI, CT, GU don't report on Saturdays/Sundays
     #   Oct 19 -- add WI (removed Oct 25)
     #   Oct 18 -- add KS
-    for place in ['RI', 'CT', 'GU', 'KS']:
-        data[place]['data'].loc['2020-12-26', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-27', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2020-12-26', 'death'] = onp.nan
-        data[place]['data'].loc['2020-12-27', 'death'] = onp.nan
+    for place in ['RI', 'GU', 'KS', 'WA', 'CT']:
+        data[place]['data'].loc['2021-02-13', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-02-14', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-02-13', 'death'] = onp.nan
+        data[place]['data'].loc['2021-02-14', 'death'] = onp.nan
 
 
-    # 2020-12-20
-    # California dashboard included 15,337 historical cases in their December 16 update
-    # https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data
-    util.redistribute(data['CA']['data'], '2020-12-16', 15337, 60, 'confirmed')
+    # https://covidtracking.com/data/state/ohio/notes
+    util.redistribute(data['OH']['data'], '2021-02-11', 650, 90, 'death')
+    util.redistribute(data['OH']['data'], '2021-02-12', 2500, 90, 'death')
+    util.redistribute(data['OH']['data'], '2021-02-13', 1125, 90, 'death')
+
+    # https://content.govdelivery.com/accounts/AKDHSS/bulletins/2be6de2
+    # "All 17 deaths were identified through death certificate review"
+    util.redistribute(data['AK']['data'], '2021-02-02', 17, 60, 'death')
+
+    # https://twitter.com/Delaware_DHSS/status/1357838111879921671
+    #util.redistribute(data['DE']['data'], '2021-02-05', 54, 90, 'death')
+    # https://twitter.com/Delaware_DHSS/status/1357060070538940420
+    #util.redistribute(data['DE']['data'], '2021-02-03', 17, 30, 'death')
+
+    # See JHU github
+    util.redistribute(data['IN']['data'], '2021-02-04', 150, 90, 'death')
+
+    # https://www.kwch.com/2021/02/05/1st-child-death-from-covid-19-reported-in-kansas/
+    # A KDHE spokesperson said that the department was reviewing death 
+    # certificates, which contributes to the increase in deaths.
+    #util.redistribute(data['KS']['data'], '2021-02-02', 150, 60, 'death')
+
+    # can't find a specific record
+    util.redistribute(data['MT']['data'], '2021-02-03', 25, 60, 'death')
+
+
+    # No details released, but pretty sure these are older deaths
+    # https://www.kcrg.com/2021/01/31/reported-covid-19-deaths-in-iowa-swell-to-over-4900/
+    util.redistribute(data['IA']['data'], '2021-01-31', 240, 60, 'death')
+    util.redistribute(data['IA']['data'], '2021-01-30', 30, 60, 'death')
+
+    # https://twitter.com/scdhec/status/1354893314777088008
+    util.redistribute(data['SC']['data'], '2021-01-27', 54, 30, 'death')
+    util.redistribute(data['SC']['data'], '2021-01-28', 200, 30, 'death')
+
+    # https://health.hawaii.gov/news/covid-19/hawaii-covid-19-daily-news-digest-january-26-2021/
+    util.redistribute(data['HI']['data'], '2021-01-26', 59, 90, 'death')
+
+
+    util.redistribute(data['MT']['data'], '2021-01-23', 30, 60, 'death')
+
+    # https://content.govdelivery.com/accounts/AKDHSS/bulletins/2bb208d
+    util.redistribute(data['AK']['data'], '2021-01-23', 5, 60, 'death')
+
+    # https://content.govdelivery.com/accounts/AKDHSS/bulletins/2ba597a
+    util.redistribute(data['AK']['data'], '2021-01-20', 22, 60, 'death')
+
+
+    util.redistribute(data['WI']['data'], '2021-01-16', 60, 20, 'death')
+
+    # Rebalance large pos/neg vaules Jan 7/8
+    util.redistribute(data['NE']['data'], '2021-01-08', -90, 1, 'death')
+
+    # 23 of the deaths reported on the 16th were from between Dec 24 and Jan 16
+    # https://www.pressherald.com/2021/01/16/maine-cdc-reports-30-deaths-444-new-cases-of-covid-19/
+    util.redistribute(data['ME']['data'], '2021-01-16', 23, 24, 'death')
+
+    # 35 of the deaths reported on Jan 8 were from December. 
+    # https://www.wabi.tv/2021/01/08/maine-sees-deadliest-day-of-pandemic-with-41-deaths-789-new-cases/
+    util.redistribute(data['ME']['data'], '2021-01-08', 35, 40, 'death')
+
+
+    # The WA saga....
+    util.redistribute(data['WA']['data'], '2021-02-08', 20, 60, 'death')
+    util.redistribute(data['WA']['data'], '2021-02-09', 20, 60, 'death')
+    util.redistribute(data['WA']['data'], '2021-02-10', 10, 60, 'death')
+    util.redistribute(data['WA']['data'], '2021-02-12', 10, 60, 'death')
+
+    # and again!
+    util.redistribute(data['WA']['data'], '2021-01-22', 20, 6, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-21', 100, 5, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-19', 25, 3, 'death')
+
+    # WA weirdness seems to be weekly....
+    util.redistribute(data['WA']['data'], '2021-01-12', 60, 3, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-13', 20, 4, 'death')
+
+    # More WA cleanup after New Year's. Sigh.
+    # Used time series download from WA dashboard as reference, but could not
+    # make numbers match closely. Dashboard reports ~20 or fewer deaths each
+    # day since start of Jan
+    util.redistribute(data['WA']['data'], '2021-01-03', 5000, 2, 'confirmed')
+    util.redistribute(data['WA']['data'], '2021-01-08', 30, 30, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-08', 10, 7, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-07', 10, 30, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-06', 30, 30, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-06', 10, 5, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-05', 25, 30, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-05', 10, 4, 'death')
+    util.redistribute(data['WA']['data'], '2021-01-04', 15, 3, 'death')
+
+
+    # Manual smoothing due to combined lack of reporting after Christmas and 
+    # imprecise report that a backlog of "approximately 200 deaths" were 
+    # reported ~12-29. 
+    # https://covid-tracking-project-data.s3.us-east-1.amazonaws.com/state_screenshots/WA/WA-20201230-001452.png
+    util.redistribute(data['WA']['data'], '2020-12-29', 120, 60, 'death')
+    util.redistribute(data['WA']['data'], '2020-12-29', 40, 4, 'death')
+    util.redistribute(data['WA']['data'], '2020-12-30', 20, 60, 'death')
+    util.redistribute(data['WA']['data'], '2020-12-31', 20, 60, 'death')
+
 
     # 2020-12-20
     # manual smoothing of WA after data update left things very wonky
@@ -62,6 +154,12 @@ if __name__ == "__main__":
     util.redistribute(data['WA']['data'], '2020-12-17', 25, 7, 'death')
     util.redistribute(data['WA']['data'], '2020-12-17', 20, -1, 'death')
     util.redistribute(data['WA']['data'], '2020-12-17', 20, -2, 'death')
+
+    # 2020-12-20
+    # California dashboard included 15,337 historical cases in their December 16 update
+    # https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data
+    util.redistribute(data['CA']['data'], '2020-12-16', 15337, 60, 'confirmed')
+
 
     # 2020-12-07: manual smoothing of MA/ME data on Thanksgiving and following
     util.redistribute(data['MA']['data'], '2020-11-26', -3000, -7, 'confirmed')
