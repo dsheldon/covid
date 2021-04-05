@@ -9,11 +9,10 @@ setup(
     author='Dan Sheldon',
     author_email='sheldon@cs.umass.edu',
     install_requires=[
-        'jaxlib>=0.1.45',
         'patsy>=0.5.1',
-        'jax==0.2.3',
-        'numpyro @ git+https://github.com/pyro-ppl/numpyro.git#egg=numpyro'
+        'numpyro>=0.4.1'
+        'jax>=0.2.3'
     ],
-    keywords=' machine learning bayesian statistics',
+    keywords='machine learning bayesian statistics',
     license='MIT'
 )
