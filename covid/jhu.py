@@ -22,6 +22,7 @@ def load_world():
     sources = {
     'confirmed' : 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
     'death' : 'https://github.com/CSSEGISandData/COVID-19/raw/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+
 }
 
     # Load each data file into a dataframe with row index = date, and column index = (country, province)
@@ -142,11 +143,21 @@ def load_us(counties=False):
         
         return df
 
-    
+
+    def load_hospitalizations():
+        hospitalizations = pd.read_csv("https://healthdata.gov/api/views/g62h-syeh/rows.csv?accessType=DOWNLOAD&api_foundry=true")
+        hospitalizations['hosp'] = hospitalizations['previous_day_admission_adult_covid_confirmed'] +hospitalizations['previous_day_admission_pediatric_covid_confirmed']               
+        hospitalizations.index = pd.to_datetime(hospitalizations.index) - pd.Timedelta("1 day")
+        hospitalizations_subset = hospitalizations[['date','state','hosp']]
+        hospitalizations_subset["date"] = hospitalizations_subset["date"].astype("datetime64[ns]")
+        hospitalizations_subset = hospitalizations_subset.pivot(index="date", columns="state", values="hosp")
+        
+        return hospitalizations_subset
+        
     confirmed = load_us_time_series("time_series_covid19_confirmed_US.csv")
     deaths = load_us_time_series("time_series_covid19_deaths_US.csv")
+    hosp = load_hospitalizations
     
-    # Combine deaths and confirmed
     df = pd.concat([deaths,confirmed],axis=1,keys=('death','confirmed'))
     df = df.reorder_levels([1,0], axis=1).sort_index(axis=1)
     

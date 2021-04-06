@@ -10,10 +10,15 @@ STATES_AND_US=["US", "AS", "GU", "MP", "PR", "VI", "AL", "AK", "AZ", "AR", "CA",
 #STATES_AND_US=["Belgium","Bulgaria","Czechia","Denmark","Germany","Estonia","Ireland","Greece","Spain","France","Croatia","Italy","Cyprus","Latvia","Lithuania","Luxembourg","Hungary","Malta","Netherlands","Austria","Poland","Portugal","Romania","Slovenia","Slovakia","Finland","Sweden","United Kingdom","Iceland","Liechtenstein","Norway","Switzerland"]#["Germany","France","United Kingdom","Ireland","Italy"]
 
 #STATES_AND_US=["Spain"]
-DEFAULT_CONFIGS = ['llonger_H']# 'llonger_H']
-#DEFAULT+CONFIGS=['llonger_H']
+DEFAULT_CONFIGS = ['SEIRD_renewal']# 'llonger_H']
+
+#DEFAULT_CONFIGS = ['llonger_H_fix']
+#DEFAULT_CONFIGS=['casey','llonger_H_fix','SEIRD_renewal']
 #DEFAULT_CONFIGS = ['casey']
-TODAY = "2021-04-28"# pd.to_datetime("today").strftime('%Y-%m-%d')
+
+#TODAY = "2020-06-04"# pd.to_datetime("today").strftime('%Y-%m-%d')
+TODAY = "2021-04-04"
+
 
 if __name__ == "__main__":
 
@@ -30,7 +35,7 @@ if __name__ == "__main__":
     # dates
     parser.add_argument('--start', help='start date', default='2020-03-04')
     parser.add_argument('--forecast_dates', nargs="+", help='forecast dates', default=[TODAY])
-    parser.add_argument('--num_sundays', help="use the last n sundays as forecast dates", type=int, default=30)
+    parser.add_argument('--num_sundays', help="use the last n sundays as forecast dates", type=int, default=None)
 
     # other
     parser.add_argument('--root', help='root directory for output', default='/mnt/nfs/work1/sheldon/gcgibson/')

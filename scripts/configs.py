@@ -1,7 +1,8 @@
 import covid.models.SEIRD
 import covid.models.SEIRD_variable_detection
+import covid.models.casey
+import covid.models.SEIRD_renewal
 import covid.models.SEIRD_incident
-
 import covid.util as util
 
 
@@ -66,6 +67,32 @@ llonger_H = {
         'H_duration_est': 25.0
     }
 }
+
+
+#  changed gamma_shape and sigma_shape from 100 to 1000 on 2021-01-10
+casey = {
+    'model': covid.models.casey.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'H_duration_est': 25.0
+    }
+}
+
+
+SEIRD_renewal = {
+    'model': covid.models.SEIRD_renewal.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
+
 
 # Less rw
 llonger_H_fix = {

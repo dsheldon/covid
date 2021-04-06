@@ -6,7 +6,7 @@ import argparse
 import covid.util as util
 import configs
 import numpy as onp
-
+import pandas as pd
 
 if __name__ == "__main__":
 
@@ -27,9 +27,8 @@ if __name__ == "__main__":
 
     config = getattr(configs, args.config)
 
-    data = config.get('data') or util.load_data()
-
-    # MI doesn't report on Sundays
+    data =  util.load_data()
+        # MI doesn't report on Sundays
     #   Oct 19 - add MS
     for place in ['MI', 'NH', 'MS']:
         data[place]['data'].loc['2021-02-14', 'confirmed'] = onp.nan
@@ -310,7 +309,54 @@ if __name__ == "__main__":
     # Correct values 9/15 through 9/20 are: 91,304 92,712 94,746 97,279 99,562 101,227 (source: https://www.dhs.wisconsin.gov/covid-19/cases.htm)
     data['WI']['data'].loc['2020-09-15':'2020-09-20', 'confirmed'] = [91304, 92712, 94746, 97279, 99562, 101227]
 
+    def fill_nan(A):
+             '''
+             interpolate to fill nan values
+             '''
+             inds = onp.arange(A.shape[0])
+             good = onp.where(onp.isfinite(A))
+             f = interpolate.interp1d(inds[good], A[good],bounds_error=False)
+             B  = onp.where(onp.isfinite(A),A,f(inds))
+             return B
 
+    from scipy import interpolate
+    if args.config =="casey" or args.config=="SEIRD_renewal":
+        for place_ in ['Sweden','Switzerland','Spain']:
+              confirmed_tmp = onp.diff(data[place_]['data']['confirmed'])
+              confirmed_tmp_first_20 = confirmed_tmp[:20] 
+              confirmed_last_20 = confirmed_tmp[20:]
+              confirmed_last_20 = onp.array([onp.nan if x==0 else x for x in confirmed_last_20])
+              confirmed_last_20 = fill_nan(confirmed_last_20)
+              confirmed_last_20[-1] = confirmed_last_20[-3]
+              confirmed_last_20[-2] = confirmed_last_20[-3] 
+              confirmed_last_20 = onp.nan_to_num(confirmed_last_20)#onp.array([0 if x== onp.nan else x for x in confirmed_last_20])
+              data[place_]['data']['confirmed'] =onp.append(onp.array([0]),onp.cumsum(onp.append(confirmed_tmp_first_20,confirmed_last_20)))            
+    
+              confirmed_tmp = onp.diff(data[place_]['data']['death'])
+              confirmed_tmp_first_20 = confirmed_tmp[:20]
+              confirmed_last_20 = confirmed_tmp[20:]
+              confirmed_last_20 = onp.array([onp.nan if x==0 else x for x in confirmed_last_20])
+              confirmed_last_20 = fill_nan(confirmed_last_20)
+              confirmed_last_20[-1] = confirmed_last_20[-3]
+              confirmed_last_20[-2] = confirmed_last_20[-3]
+              confirmed_last_20 = onp.nan_to_num(confirmed_last_20)#onp.array([0 if x== onp.nan else x for x in confirmed_last_20])
+              data[place_]['data']['death'] = onp.append(onp.array([0]),onp.cumsum(onp.append(confirmed_tmp_first_20,confirmed_last_20))).astype(int)
+    elif args.config=="blarb":
+    # MI doesn't report on Sundays
+    #   Oct 19 - add MS
+        for place_ in ['Sweden','Luxembourg','Switzerland','Spain']:
+            for date in list(pd.date_range(start=args.start, end=args.end, freq='W').astype(str)):    
+                data[place_]['data'].loc[date, 'confirmed'] = onp.nan
+                data[place_]['data'].loc[date, 'death'] = onp.nan
+            for date in list((pd.date_range(start=args.start, end=pd.to_datetime(args.end), freq='W')-pd.Timedelta("1 day")).astype(str)):
+               data[place_]['data'].loc[date, 'confirmed'] = onp.nan
+               data[place_]['data'].loc[date, 'death'] = onp.nan
+
+
+
+    util.redistribute(data['France']['data'], '2021-03-28', 500, 90, 'death')
+    util.redistribute(data['France']['data'], '2021-03-28',2000,90,'confirmed')
+    # Correct values 9/15 through 9/20 are: 91,304 92,712 94,746 97,279 99,562 101,227 (source: https://www.dhs.wisconsin.gov/covid-19/cases.htm)
 
     if args.run:
         util.run_place(data,

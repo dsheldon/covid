@@ -3,6 +3,10 @@ data
 bak
 figs
 out
+log
+scripts/submission_files/
+scripts/submission_file_scripts_us/submission_files/
+scripts/submission_file_scripts_eu/submission_files/
 .*_out
 **.egg-info
 **__pycache__
