@@ -298,14 +298,14 @@ class SEIRD(SEIRDBase):
             if suffix != "_future":
                  y = observe_nb2("dy" + suffix, new_cases, det_prob, confirmed_dispersion, obs = confirmed)
             else:
-                 y = observe_nb2("dy" + suffix, new_cases[-28:], det_prob[-28:], confirmed_dispersion, obs = confirmed)
+                 y = observe_nb2("dy" + suffix, new_cases[-T_future:], det_prob[-T_future:], confirmed_dispersion, obs = confirmed)
 
 
         with numpyro.handlers.scale(scale=2.0):
             if suffix != "_future":
                 z = observe_nb2("dz" + suffix, new_deaths, det_prob_d, death_dispersion, obs = death)  
             else:
-                z = observe_nb2("dz" + suffix, new_deaths[-28:], det_prob_d, death_dispersion, obs = death)
+                z = observe_nb2("dz" + suffix, new_deaths[-T_future:], det_prob_d, death_dispersion, obs = death)
 
         x=None
         return beta, det_prob, x, y, z
