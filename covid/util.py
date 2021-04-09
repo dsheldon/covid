@@ -44,18 +44,17 @@ def load_world_data():
     world = world.loc[:,(slice(None), 'tot', slice(None))] # only country totals
 
     country_names = world.columns.unique(level=0)
-    world_pop_data = pd.read_csv('https://s3.amazonaws.com/rawstore.datahub.io/630580e802a621887384f99527b68f59.csv')
-    world_pop_data = world_pop_data.set_index("Country")
+    world_pop_data = pd.read_csv('https://raw.githubusercontent.com/epiforecasts/covid19-forecast-hub-europe/main/data-locations/locations_eu.csv')
+    world_pop_data = world_pop_data.set_index("location_name")
         
     country_names_valid = set(country_names) & set(world_pop_data.index) 
     
     world_data = {
         k: {'data' : world[k].tot.copy(), 
-            'pop' : world_pop_data.loc[k]['Year_2016'],
+            'pop' : world_pop_data.loc[k],
             'name' : k}
         for k in country_names_valid
     }
-
     world_data['US'] = {'pop': 328000000,'data':world['US'].tot,'name':'US'}
       
     return world_data
@@ -236,14 +235,25 @@ def run_place(data,
 
     print(f"Running {place} (start={start}, end={end})")
     place_data = data[place]['data'][start:end]
-    T = len(place_data)
+    
 
-    model = model_type(
+
+    T = len(place_data)
+    try:
+       model = model_type(
+        data = place_data,
+        T = T,
+        N = data[place]['pop']['population'],
+        **kwargs
+       )
+    except:
+       model = model_type(
         data = place_data,
         T = T,
         N = data[place]['pop'],
         **kwargs
-    )
+       )
+
     
     print(" * running MCMC")
     mcmc_samples = model.infer(num_warmup=num_warmup, 
@@ -265,7 +275,7 @@ def run_place(data,
 
     # Forecasting posterior predictive (do condition on observations)
     print(" * collecting forecast samples")
-    forecast_samples = model.forecast(T_future=T_future)
+    forecast_samples = model.forecast(T_future=T_future,T_old=T)
         
     if save:
 
@@ -349,10 +359,11 @@ def gen_forecasts(data,
 
     confirmed = data[place]['data'].confirmed[start:end]
     death = data[place]['data'].death[start:end]
-
+    print (confirmed)
+    print (death)
     T = len(confirmed)
     N = data[place]['pop']
-
+    
     filename = samples_path / f'{place}.npz'   
     _, mcmc_samples, post_pred_samples, forecast_samples = load_samples(filename)
         
@@ -370,6 +381,7 @@ def gen_forecasts(data,
                     observations= [confirmed, death]
 
                 for variable, obs, ax in zip(variables, observations, axes):
+                    
                     model.plot_forecast(variable,
                                         post_pred_samples,
                                         forecast_samples,
@@ -390,17 +402,17 @@ def gen_forecasts(data,
                 if show:
                     plt.show()
     
-    fig, ax = plt.subplots(figsize=(5,4))
-    plot_growth_rate(mcmc_samples, start, ax=ax)
-    plt.title(place)
-    plt.tight_layout()
+    #fig, ax = plt.subplots(figsize=(5,4))
+    #plot_growth_rate(mcmc_samples, start, ax=ax)
+    #plt.title(place)
+    #plt.tight_layout()
     
-    if save:
-        filename = vis_path / f'{place}_R0.png'
-        plt.savefig(filename)
+    #if save:
+     #   filename = vis_path / f'{place}_R0.png'
+      #  plt.savefig(filename)
 
-    if show:
-        plt.show()   
+    #if show:
+     #   plt.show()   
         
         
         

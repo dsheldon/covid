@@ -17,7 +17,8 @@ from covid.compartment import SEIRDModel
 '''Utility to define access method for time varying fields'''
 def getter(f):
     def get(self, samples, forecast=False):
-        return samples[f + '_future'] if forecast else self.combine_samples(samples, f)
+         print (samples.keys())
+         return samples[f + '_future'] if forecast else self.combine_samples(samples, f)
     return get
 
 
@@ -40,10 +41,8 @@ class Model():
         'y': 'confirmed',
         'z': 'deaths',
         'dy': 'daily confirmed',
-        'dz': 'daily deaths',
-        'mean_dy': 'daily confirmed (mean)',
-        'mean_dz': 'daily deaths (mean)'
-    }
+        'dz': 'daily deaths'
+}
             
     
     def __init__(self, data=None, mcmc_samples=None, **args):
@@ -161,8 +160,9 @@ class Model():
         f0, f_future = f + '0', f + '_future'
         data = np.concatenate((samples[f0][:,None], samples[f]), axis=1)
         if f_future in samples and use_future:
-            data = np.concatenate((data, samples[f_future]), axis=1)
+              data = np.concatenate((data, samples[f_future]), axis=1)
         return data
+ 
     
     
     def get(self, samples, c, **kwargs):
@@ -187,17 +187,12 @@ class Model():
     '''These are methods e.g., call self.z(samples) to get z'''
     #z = getter('z')
     #y = getter('y')
-    mean_y = getter('mean_y')
-    mean_z = getter('mean_z')
-
-    z = mean_z
-    y = mean_y
+    z = getter('z')
+    y = getter('y')
     
     # There are only available in some models but easier to define here
     dz = getter('dz')
     dy = getter('dy')
-    mean_dy = getter('mean_dy')
-    mean_dz = getter('mean_dz')
     
     
     def plot_samples(self,
@@ -214,7 +209,6 @@ class Model():
         Plotting method for SIR-type models. 
         '''
 
-        
         ax = plt.axes(ax)
 
         T_data = self.horizon(samples, forecast=forecast)        
@@ -222,7 +216,7 @@ class Model():
         
         fields = {f: 0.0 + self.get(samples, f, forecast=forecast)[:,:T] for f in plot_fields}
         names = {f: self.names[f] for f in plot_fields}
-                
+        
         medians = {names[f]: onp.median(onp.array(v), axis=0) for f, v in fields.items()}
 
         t = pd.date_range(start=start, periods=T, freq='D')
@@ -293,7 +287,7 @@ class Model():
         # Plot observation
         forecast_end = forecast_start + pd.Timedelta(T_future-1, "d")
         obs[start:forecast_end].plot(ax=ax, style='o')
-        
+        print (obs) 
         # Plot vertical line at end of observed data
         ax.axvline(obs_end, linestyle='--', alpha=0.5)
         ax.grid(axis='y')

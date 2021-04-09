@@ -74,7 +74,7 @@ for place in places:
 forecast = pd.DataFrame(forecast)
 forecast.loc[forecast.type=="point"]
 
-fips_codes = pd.read_csv('../resources/state_fips_codes.csv')
+fips_codes = pd.read_csv('../../resources/state_fips_codes.csv')
 
 df_truth = forecast.merge(fips_codes, left_on='location', right_on='state', how='left')
 df_truth["state_code"] = df_truth["state_code"].astype(str)
@@ -86,5 +86,5 @@ import datetime
 
 df_truth['location'] = df_truth['location'].apply(lambda x: '{0:0>2}'.format(x))
 
-fname = "../submission_files/incident/"+ forecast_date.strftime('%Y-%m-%d') + "-UMass-MechBayes.csv"
+fname = "../submission_files/incident/"+ forecast_date.strftime('%Y-%m-%d') + "-UMass-MechBayes.csv.clean"
 df_truth.to_csv(fname, float_format="%.0f",index=False)

@@ -1,7 +1,7 @@
 #!/bin/bash
-model=resample_80_last_10
-root=/mnt/nfs/work1/sheldon/gcgibson/
-forecast_date="2020-08-09"
+model=llonger_H_fix
+root=/mnt/nfs/work1/sheldon/sheldon/covid-results/ #mnt/nfs/work1/sheldon/covid/
+forecast_date="2021-04-04"
 
 incident_samples=$root/$model/$forecast_date/samples/
 cumulative_samples=$root/$model/$forecast_date/samples/
