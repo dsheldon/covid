@@ -3,8 +3,8 @@ data
 bak
 figs
 out
-scripts/submission_scripts_new/submission_files/
-scripts/submission_scripts_new/merged_submission_files/
+scripts/submission_scripts_new/submission_files/**
+scripts/submission_scripts_new/merged_submission_files/**
 .*_out
 **.egg-info
 **__pycache__
