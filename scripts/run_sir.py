@@ -29,32 +29,31 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
-    # April 4: didn't report or had anomalous low counts on Easter Sunday
-    for place in ['KY', 'MN', 'OH', 'SC', 'SD', 'MA']:
-        data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
+    # # April 4: didn't report or had anomalous low counts on Easter Sunday
+    # for place in ['KY', 'MN', 'OH', 'SC', 'SD', 'MA']:
+    #     data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
+    #     data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
     
-    # April 4: missing or anomalous low counts both Sat/Sun
-    for place in ['ID', 'CA', 'NM', 'OK']:
-        data[place]['data'].loc['2021-04-03', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-03', 'death'] = onp.nan
-        data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
+    # # April 4: missing or anomalous low counts both Sat/Sun
+    # for place in ['ID', 'CA', 'NM', 'OK']:
+    #     data[place]['data'].loc['2021-04-03', 'confirmed'] = onp.nan
+    #     data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
+    #     data[place]['data'].loc['2021-04-03', 'death'] = onp.nan
+    #     data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
 
 
-    # April 4 -- no data Fri/Sat/Sun
-    for place in ['NC', 'TN']:
-        data[place]['data'].loc['2021-04-02':'2021-04-04', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-02':'2021-04-04', 'death'] = onp.nan     
+    # # April 4 -- no data Fri/Sat/Sun
+    # for place in ['NC', 'TN']:
+    #     data[place]['data'].loc['2021-04-02':'2021-04-04', 'confirmed'] = onp.nan
+    #     data[place]['data'].loc['2021-04-02':'2021-04-04', 'death'] = onp.nan     
      
 
     # MI doesn't report on Sundays
     #   Oct 19 - add MS
     #   March 8, 2021 --- add ID
-    #   March 14, 2021 --- add NC
-    for place in ['MI', 'NH', 'MS', 'ID', 'NC']:
-        data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
+    for place in ['MI', 'ID']:
+        data[place]['data'].loc['2021-04-11', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-04-11', 'death'] = onp.nan
 
     # RI, CT, GU don't report on Saturdays/Sundays
     #   Oct 19 -- add WI (removed Oct 25)
@@ -63,12 +62,13 @@ if __name__ == "__main__":
     #   March 21, 2021 --- add AK
     #   March 28, 2021 --- add LA
     #   April  4, 2021 --- Add WY
-    #   April  4, 2011 --- (remove WA)
-    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY']:
-        data[place]['data'].loc['2021-04-03', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-03', 'death'] = onp.nan
-        data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
+    #   April  4, 2021 --- (remove WA)
+    #   April 11, 2021 --- add NM, NC
+    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY', 'NM', 'NC']:
+        data[place]['data'].loc['2021-04-10', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-04-11', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-04-10', 'death'] = onp.nan
+        data[place]['data'].loc['2021-04-11', 'death'] = onp.nan
 
 
     # OK is updating death data intermittently. Adjust.
@@ -76,12 +76,33 @@ if __name__ == "__main__":
     util.redistribute(data['OK']['data'], '2021-03-16', 73, 6, 'death')
     util.redistribute(data['OK']['data'], '2021-03-24', 62*6//7, 6, 'death')
     util.redistribute(data['OK']['data'], '2021-03-31', 103*6//7, 6, 'death')
-    data['OK']['data'].loc['2021-04-01':, 'death'] = onp.nan
+    util.redistribute(data['OK']['data'], '2021-04-07', 103*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-04-07', (1716-103), 300, 'death') # big spike on 04-07: JHU
+    util.redistribute(data['US']['data'], '2021-04-07', (1716-103), 300, 'death') # also at US level
+    util.redistribute(data['OK']['data'], '2021-04-07', 1300, 300, 'confirmed') # case spike OK
+    util.redistribute(data['US']['data'], '2021-04-07', 1300, 300, 'confirmed') # case spike US
+    data['OK']['data'].loc['2021-04-08':, 'death'] = onp.nan
+
 
     # Ohio death is now delayed and attributed to time of death
     # by JHU. The last week (or more) is basically empty. Guesstimate
     # how far back and set to missing.
-    data['OH']['data'].loc['2021-03-21':, 'death'] = onp.nan
+    data['OH']['data'].loc['2021-03-28':, 'death'] = onp.nan
+
+    # https://www.8newsnow.com/news/health/coronavirus-health/new-covid-19-cases-highest-in-a-month-18-fully-vaccinated/
+    # https://www.8newsnow.com/news/health/coronavirus-health/new-nevada-clark-county-report-high-covid-19-case-counts-for-2nd-consecutive-day-due-to-delayed-electronic-laboratory-reports/
+    util.redistribute(data['NV']['data'], '2021-04-10', 164, 90, 'confirmed')
+    util.redistribute(data['NV']['data'], '2021-04-10', 471, 90, 'confirmed')
+
+    # Guessing
+    util.redistribute(data['NE']['data'], '2021-04-08', 21, 30, 'death')
+    util.redistribute(data['NE']['data'], '2021-04-09', 9, 20, 'death')
+
+    # JHU / Billings Gazette (e.g., https://billingsgazette.com/news/state-and-regional/montana-reports-218-covid-19-cases-11-deaths/article_54c208c7-c57e-5dc2-9d97-9eb8251dd949.html)
+    util.redistribute(data['MT']['data'], '2021-04-06', 11, 90, 'death')
+    util.redistribute(data['MT']['data'], '2021-04-07', 9, 90, 'death')
+    util.redistribute(data['MT']['data'], '2021-04-09', 72, 90, 'confirmed')
+    util.redistribute(data['MT']['data'], '2021-04-09', 26, 90, 'death')
 
     util.redistribute(data['MT']['data'], '2021-04-02', 13, 21, 'death')    
     util.redistribute(data['MT']['data'], '2021-04-03', 8, 7, 'death')    

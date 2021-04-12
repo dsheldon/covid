@@ -211,8 +211,8 @@ class SEIRD(SEIRDBase):
         x_diff = np.diff(x, axis=0)
         
         # Don't let incident cases/deaths be exactly zero (or worse, negative!)
-        new_cases = np.maximum(x_diff[:,6], 0.001)
-        new_deaths = np.maximum(x_diff[:,5], 0.001)
+        new_cases = np.maximum(x_diff[:,6], 0.01)
+        new_deaths = np.maximum(x_diff[:,5], 0.01)
         
         # Noisy observations
         with numpyro.handlers.scale(scale=0.5):
