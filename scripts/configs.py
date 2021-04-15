@@ -1,7 +1,7 @@
 import covid.models.SEIRD
 import covid.models.SEIRD_variable_detection
 import covid.models.SEIRD_incident
-
+import covid.models.SEIRD_renewal
 import covid.util as util
 
 
@@ -11,6 +11,10 @@ SEIRD = {
     'args'  : {}                # use defaults
 }
 
+SEIRD_renewal = {
+    'model' : covid.models.SEIRD_renewal.SEIRD,
+    'args'  : {}                # use defaults
+}
 
 # 2020-05-03 forecast
 strongest_prior = {
