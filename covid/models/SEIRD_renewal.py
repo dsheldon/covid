@@ -44,8 +44,7 @@ class SEIRD(SEIRDBase):
                  num_frozen=0,
                  rw_use_last=1,
                  confirmed=None,
-                 death=None,
-                  T_old=None):
+                 death=None):
 
         '''
         Stochastic SEIR model. Draws random parameters and runs dynamics.
@@ -221,7 +220,6 @@ class SEIRD(SEIRDBase):
             #      = convolution of U pmf and V ccdf
             
          A = np.convolve(U_pmf, V_ccdf, mode='full')[:CONV_WIDTH]
-         A_tmp = np.flip(np.convolve(U_pmf,V_pmf,mode='full'))[:CONV_WIDTH]
          A_rev = A[::-1] # to facilitate convolution incide the dynamics loop
             
             #print("R0", beta*A.sum())
@@ -235,7 +233,7 @@ class SEIRD(SEIRDBase):
             #
          def scan_body(state, beta):        
                 incidence_history, S = state
-                dE = beta * S/N * np.sum(incidence_history * A)
+                dE = beta * S/N * np.sum(incidence_history * A_rev)
                 new_state = (np.append(incidence_history[1:], dE), S-dE)
                 return new_state, dE
          dE0 = x0 
@@ -305,7 +303,7 @@ class SEIRD(SEIRDBase):
             if suffix != "_future":
                 z = observe_nb2("dz" + suffix, new_deaths, det_prob_d, death_dispersion, obs = death)  
             else:
-                z = observe_nb2("dz" + suffix, new_deaths[-28:], det_prob_d, death_dispersion, obs = death)
+                z = observe_nb2("dz" + suffix, new_deaths[-T_future:], det_prob_d, death_dispersion, obs = death)
 
         x=None
         return beta, det_prob, x, y, z
