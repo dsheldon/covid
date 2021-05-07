@@ -29,31 +29,12 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
-    # # April 4: didn't report or had anomalous low counts on Easter Sunday
-    # for place in ['KY', 'MN', 'OH', 'SC', 'SD', 'MA']:
-    #     data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
-    #     data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
     
-    # # April 4: missing or anomalous low counts both Sat/Sun
-    # for place in ['ID', 'CA', 'NM', 'OK']:
-    #     data[place]['data'].loc['2021-04-03', 'confirmed'] = onp.nan
-    #     data[place]['data'].loc['2021-04-04', 'confirmed'] = onp.nan
-    #     data[place]['data'].loc['2021-04-03', 'death'] = onp.nan
-    #     data[place]['data'].loc['2021-04-04', 'death'] = onp.nan
-
-
-    # # April 4 -- no data Fri/Sat/Sun
-    # for place in ['NC', 'TN']:
-    #     data[place]['data'].loc['2021-04-02':'2021-04-04', 'confirmed'] = onp.nan
-    #     data[place]['data'].loc['2021-04-02':'2021-04-04', 'death'] = onp.nan     
-     
-
     # MI doesn't report on Sundays
-    #   Oct 19 - add MS
-    #   March 8, 2021 --- add ID
-    for place in ['MI', 'ID']:
-        data[place]['data'].loc['2021-04-11', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-11', 'death'] = onp.nan
+    #   April  4, 2021 --- add WA
+    for place in ['MI', 'WA']:
+        data[place]['data'].loc['2021-05-02', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-05-02', 'death'] = onp.nan
 
     # RI, CT, GU don't report on Saturdays/Sundays
     #   Oct 19 -- add WI (removed Oct 25)
@@ -64,11 +45,14 @@ if __name__ == "__main__":
     #   April  4, 2021 --- Add WY
     #   April  4, 2021 --- (remove WA)
     #   April 11, 2021 --- add NM, NC
-    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY', 'NM', 'NC']:
-        data[place]['data'].loc['2021-04-10', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-11', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-04-10', 'death'] = onp.nan
-        data[place]['data'].loc['2021-04-11', 'death'] = onp.nan
+    #   April 18, 2021 --- add ID
+    #   May   01, 2021 --- add SD
+    #   May   01, 2021 --- add NV
+    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY', 'NM', 'NC', 'ID', 'SD', 'NV']:
+        data[place]['data'].loc['2021-05-01', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-05-02', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-05-01', 'death'] = onp.nan
+        data[place]['data'].loc['2021-05-02', 'death'] = onp.nan
 
 
     # OK is updating death data intermittently. Adjust.
@@ -81,13 +65,68 @@ if __name__ == "__main__":
     util.redistribute(data['US']['data'], '2021-04-07', (1716-103), 300, 'death') # also at US level
     util.redistribute(data['OK']['data'], '2021-04-07', 1300, 300, 'confirmed') # case spike OK
     util.redistribute(data['US']['data'], '2021-04-07', 1300, 300, 'confirmed') # case spike US
-    data['OK']['data'].loc['2021-04-08':, 'death'] = onp.nan
-
+    util.redistribute(data['OK']['data'], '2021-04-14', 28*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-04-21', 19*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-04-28', 72*6//7, 6, 'death')
+    data['OK']['data'].loc['2021-04-29':, 'death'] = onp.nan
 
     # Ohio death is now delayed and attributed to time of death
     # by JHU. The last week (or more) is basically empty. Guesstimate
     # how far back and set to missing.
-    data['OH']['data'].loc['2021-03-28':, 'death'] = onp.nan
+    data['OH']['data'].loc['2021-04-18':, 'death'] = onp.nan
+
+    # possible weird effects of weekend cycle
+    util.redistribute(data['NM']['data'], '2021-04-05', 443*2//3, 2, 'confirmed')
+    util.redistribute(data['NM']['data'], '2021-04-12', 619*2//3, 2, 'confirmed')
+    util.redistribute(data['NM']['data'], '2021-04-19', 610*2//3, 2, 'confirmed')
+    util.redistribute(data['NM']['data'], '2021-04-26', 623*2//3, 2, 'confirmed')
+
+    # fix huge neg. number
+    util.redistribute(data['NJ']['data'], '2021-04-26', -10800, 90, 'confirmed')
+
+    # JHU weekly report
+    util.redistribute(data['WV']['data'], '2021-04-27', -162, 90, 'death')
+
+    # https://content.govdelivery.com/accounts/AKDHSS/bulletins/2d226f2?reqfrom=share
+    # Twelve deaths of Alaska residents over the past several months were identified through death certificate review:
+    util.redistribute(data['AK']['data'], '2021-04-26', 12, 90, 'death')
+
+    util.redistribute(data['IA']['data'], '2021-04-30', 16, 5, 'death')
+
+    # fix weird jump then drop on 4-30 and 5-01
+    util.redistribute(data['CA']['data'], '2021-05-01', -312, 1, 'death')
+
+    # https://www.nytimes.com/interactive/2021/us/tennessee-covid-cases.html
+    util.redistribute(data['TN']['data'], '2021-04-19', 2000, 90, 'confirmed')
+    util.redistribute(data['MA']['data'], '2021-04-22', 800,  90, 'confirmed')
+
+    # JHU weekly report
+    util.redistribute(data['AL']['data'], '2021-04-20', 1110, 90, 'confirmed')
+
+    util.redistribute(data['IA']['data'], '2021-04-24', 17, 14, 'death')
+
+    util.redistribute(data['MA']['data'], '2021-04-04', -1000, -6, 'confirmed')
+    util.redistribute(data['MA']['data'], '2021-04-04', -1000,  6, 'confirmed')
+
+    # https://chfs.ky.gov/Pages/cvdaily.aspx?View=April%202021%20Daily%20Summaries&Title=Table%20Viewer%20Webpart
+    util.redistribute(data['KY']['data'], '2021-04-23', 17, 90, 'death')
+    util.redistribute(data['KY']['data'], '2021-04-24', 11, 90, 'death')
+
+    # https://www.wthr.com/article/news/health/latest-indiana-coronavirus-updates-global-death-toll-tops-3-million-saturday-april-17-speedway-clinic/531-c41b3be8-59f0-468c-a4f7-63b7dbe00b4e
+    util.redistribute(data['IN']['data'], '2021-04-17', 1241, 90, 'confirmed')
+
+    # JHU weekly report
+    util.redistribute(data['AL']['data'], '2021-04-13', 1150, 90, 'confirmed')
+    
+    # JHU / https://siouxlandnews.com/news/coronavirus/covid-19-in-nebraska-04-15-2021
+    util.redistribute(data['NE']['data'], '2021-04-15', -22, 90, 'death')
+    
+    # https://github.com/CSSEGISandData/COVID-19/issues/3975
+    # reported drop of 11454 doesn't seem plausible --- add 2200
+    util.redistribute(data['MO']['data'], '2021-04-17', -11454+2200, 300, 'confirmed')
+
+    # JHU weekly report
+    util.redistribute(data['AK']['data'], '2021-04-15', 20, 90, 'death')
 
     # https://www.8newsnow.com/news/health/coronavirus-health/new-covid-19-cases-highest-in-a-month-18-fully-vaccinated/
     # https://www.8newsnow.com/news/health/coronavirus-health/new-nevada-clark-county-report-high-covid-19-case-counts-for-2nd-consecutive-day-due-to-delayed-electronic-laboratory-reports/

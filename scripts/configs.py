@@ -80,6 +80,20 @@ llonger_H_fix = {
     }
 }
 
+lower_det = {
+    'model': covid.models.SEIRD_incident.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0,
+        'det_prob_est': 0.1
+    }
+}
+
+
 # For debugging on Jan 3
 debug = {
     'model': covid.models.SEIRD_incident.SEIRD,
