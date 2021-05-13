@@ -39,17 +39,13 @@ else:
 # verify sum of first medians is close to median
 
 print ("Sum of first 7 days LA: " ,np.sum(mean_forecast_samples[:7]))
-print ("Submission file for 1 wk ahead LA: ",sub[(sub.location == "06037") & (sub.type == "point_mean")].value.values[0])
 
 
 print ("Sum of 7-14 days LA: " ,np.sum(mean_forecast_samples[7:14]))
-print ("Submission file for 2 wk ahead LA: ",sub[(sub.location == "06037") & (sub.type == "point_mean")].value.values[1])
 
 print ("Sum of first 14-21 days LA: " ,np.sum(mean_forecast_samples[14:21]))
-print ("Submission file for 3 wk ahead LA: ",sub[(sub.location == "06037") & (sub.type == "point_mean")].value.values[2])
 
 print ("Sum of first 21-28 days LA: " ,np.sum(mean_forecast_samples[21:28]))
-print ("Submission file for 4 wk ahead LA: ",sub[(sub.location == "06037") & (sub.type == "point_mean")].value.values[3])
 
 sub_file_success = sub[sub.type != "point_mean"]
 

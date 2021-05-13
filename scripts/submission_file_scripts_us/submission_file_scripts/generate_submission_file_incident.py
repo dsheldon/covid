@@ -42,17 +42,8 @@ for place in places:
     weekly_df = pd.DataFrame(index=t, data=np.transpose(forecast_samples)).resample("1w",closed='left',label='left').sum()
     weekly_df[weekly_df<0.] = 0.
     weekly_df.iloc[0] = weekly_df.iloc[0] 
-    
     for time, samples in weekly_df.iterrows():
         week_ahead = time.week - forecast_date.week + 1
-
-        forecast["quantile"].append("NA")
-        forecast["value"].append(np.mean(samples))
-        forecast["type"].append("point_mean")
-        forecast["location"].append(place)
-        forecast["target"].append("{:d} wk ahead inc death".format(week_ahead))
-        forecast["target_end_date"].append("NA")
-
         for q in allQuantiles:
                  deathPrediction = np.percentile(samples,q*100)
                  forecast["quantile"].append("{:.3f}".format(q))
@@ -85,6 +76,5 @@ df_truth = df_truth.rename(columns={"state_code": "location"})
 import datetime
 
 df_truth['location'] = df_truth['location'].apply(lambda x: '{0:0>2}'.format(x))
-
 fname = "../submission_files/incident/"+ forecast_date.strftime('%Y-%m-%d') + "-UMass-MechBayes.csv.clean"
 df_truth.to_csv(fname, float_format="%.0f",index=False)

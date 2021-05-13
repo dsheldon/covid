@@ -1,10 +1,19 @@
 import covid.models.SEIRD
 import covid.models.SEIRD_variable_detection
 import covid.models.casey
+import covid.models.casey2
+import covid.models.casey_eu
 import covid.models.SEIRD_renewal
+import covid.models.SEIRD_renewal_abalation
+import covid.models.SEIRD_renewal_abalation2
+import covid.models.SEIRD_renewal_abalation3
+import covid.models.SEIRD_renewal_abalation4
+import covid.models.SEIRD_renewal_abalation5
+import covid.models.SEIRD_renewal_abalation6
+import covid.models.SEIRD_renewal_ablation7
 import covid.models.SEIRD_incident
 import covid.util as util
-
+import covid.models.sm
 
 # 2020-04-25 forecast (?)
 SEIRD = {
@@ -80,7 +89,35 @@ casey = {
     }
 }
 
+sm = {
+    'model': covid.models.sm.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'H_duration_est': 25.0
+    }
+}
 
+casey_eu = {
+    'model': covid.models.casey_eu.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'H_duration_est': 25.0
+    }
+}
+
+casey2 = {
+    'model': covid.models.casey.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'H_duration_est': 25.0
+    }
+}
 SEIRD_renewal = {
     'model': covid.models.SEIRD_renewal.SEIRD,
     'args'  : {
@@ -93,7 +130,84 @@ SEIRD_renewal = {
     }
 }
 
+SEIRD_renewal_ablation = {
+    'model': covid.models.SEIRD_renewal_abalation.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
+SEIRD_renewal_ablation2 = {
+    'model': covid.models.SEIRD_renewal_abalation2.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
 
+SEIRD_renewal_ablation3 = {
+    'model': covid.models.SEIRD_renewal_abalation3.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
+
+SEIRD_renewal_ablation4 = {
+    'model': covid.models.SEIRD_renewal_abalation4.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
+SEIRD_renewal_ablation5 = {
+    'model': covid.models.SEIRD_renewal_abalation5.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
+
+SEIRD_renewal_ablation6 = {
+    'model': covid.models.SEIRD_renewal_abalation6.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
+SEIRD_renewal_ablation7 = {
+    'model': covid.models.SEIRD_renewal_ablation7.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
 # Less rw
 llonger_H_fix = {
     'model': covid.models.SEIRD_incident.SEIRD,

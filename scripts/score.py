@@ -11,9 +11,6 @@ from pathlib import Path
 
 root='results1'
 
-config_names=['counties']
-forecast_dates=['2020-10-04']
-eval_date = '2020-10-31'
 
 config_names=['lllonger_H', 'llonger_H', 'longer_H']
 forecast_dates = ['2020-10-04', '2020-10-11', '2020-10-18', '2020-10-25']

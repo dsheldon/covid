@@ -1,0 +1,96 @@
+<html>
+  <head>
+    <title>SEIR Results</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>  
+  </head>
+
+  <style>
+    .row {
+        white-space: nowrap;
+        vertical-align: top;
+        padding: 0px;
+        margin: 0px;
+        margin-bottom: 50px;
+    }
+    img {
+        vertical-align: middle;
+        padding: 0px;
+        margin: 0px;
+        display: inline;
+    }
+    .forecast {
+        width: 600px;
+    }
+    .R0 {
+        width: 400px;
+    }
+  </style>
+  <body>
+    <h1>SEIR Results</h1>
+
+    Scale:
+    <select id="scale">
+      <option value="lin" selected>linear</option>
+      <option value="log">logarithmic</option>
+    </select>
+
+    Target:
+    <select id="target">
+      <option value="False">cumulative</option>
+      <option value="True" selected>daily</option>
+    </select>
+
+    Time horizon:
+    <select id="horizon">
+      <option value="28" selected>4 weeks</option>
+      <option value="56">8 weeks</option>
+    </select>
+
+  </body>
+
+
+  <script src="places.js"></script>
+  
+  <script>
+
+    var keys = Object.keys(places);
+
+    console.log(keys.length);
+    
+    d3.select("#scale").on('change', load)
+    d3.select("#target").on('change', load)
+    d3.select("#horizon").on('change', load)
+
+    function load() {
+
+        var scale = d3.select("#scale").node().value;
+        var daily = d3.select("#target").node().value;
+        var T = d3.select("#horizon").node().value;
+        
+        var divs =
+            d3.select("body").selectAll("div")
+            .data(keys);
+
+        var entering = divs.enter()
+            .append("div")
+            .attr("class", "row");
+
+        entering.append("p").text((d) => places[d]['Combined_Key']);
+        
+        entering.append("img")
+            .attr("class", "forecast")
+            .attr("src", (d, i) => d + "_scale_" + scale + "_daily_" + daily + "_T_" + T + ".png");
+        
+        entering.append("img")
+            .attr("class", "R0")
+            .attr("src", (d, i) => d + '_R0.png');
+
+        divs.selectAll(".forecast")
+            .attr("src", (d, i) => d + "_scale_" + scale + "_daily_" + daily + "_T_" + T + ".png");
+    }
+
+    load();
+    
+  </script>
+  
+</html>

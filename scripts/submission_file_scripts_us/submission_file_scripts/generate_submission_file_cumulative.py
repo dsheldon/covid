@@ -37,12 +37,6 @@ for place in places:
     for time, samples in weekly_df.iterrows():
         week_ahead = time.week - forecast_date.week + 1
 
-        forecast["quantile"].append("NA")
-        forecast["value"].append(np.mean(samples))
-        forecast["type"].append("point_mean")
-        forecast["location"].append(place)
-        forecast["target"].append("{:d} wk ahead cum death".format(week_ahead))
-        forecast["target_end_date"].append("NA")
         for q in allQuantiles:
                  deathPrediction = np.percentile(samples,q*100)
                  forecast["quantile"].append("{:.3f}".format(q))

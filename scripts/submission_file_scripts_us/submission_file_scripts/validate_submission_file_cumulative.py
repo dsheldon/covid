@@ -38,17 +38,13 @@ else:
 # verify sum of first medians is close to median
 
 print ("Last of first 7 days US: " ,mean_forecast_samples[5])
-print ("Submission file for 1 wk ahead US: ",sub[(sub.location == "US") & (sub.type == "point_mean")].value.values[0])
 
 
 print ("Last of 7-14 days US: " ,mean_forecast_samples[12])
-print ("Submission file for 2 wk ahead US: ",sub[(sub.location == "US") & (sub.type == "point_mean")].value.values[1])
 
 print ("Last of  14-21 days US: " ,mean_forecast_samples[19])
-print ("Submission file for 3 wk ahead US: ",sub[(sub.location == "US") & (sub.type == "point_mean")].value.values[2])
 
 print ("Last of  21-28 days US: " ,mean_forecast_samples[26])
-print ("Submission file for 4 wk ahead US: ",sub[(sub.location == "US") & (sub.type == "point_mean")].value.values[3])
 
 sub_file_success = sub[sub.type != "point_mean"]
 

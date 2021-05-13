@@ -321,6 +321,12 @@ if __name__ == "__main__":
 
     from scipy import interpolate
     if args.config =="casey" or args.config=="SEIRD_renewal":
+        for place_ in ['Sweden']:
+              confirmed_tmp = onp.diff(data[place_]['data']['confirmed'])
+              #confirmed_tmp = onp.repeat(11000,len(confirmed_tmp))#confirmed_tmp[-4]
+              confirmed_tmp[-7:] = 10000#confirmed_tmp[-4]
+              #confirmed_tmp[-3] = 9000#confirmed_tmp[-4]
+              data[place_]['data']['confirmed'] =onp.append(onp.array([0]),onp.cumsum(confirmed_tmp))
         for place_ in ['Sweden','Switzerland','Spain']:
               confirmed_tmp = onp.diff(data[place_]['data']['confirmed'])
               confirmed_tmp_first_20 = confirmed_tmp[:20] 
@@ -341,9 +347,7 @@ if __name__ == "__main__":
               confirmed_last_20[-2] = confirmed_last_20[-3]
               confirmed_last_20 = onp.nan_to_num(confirmed_last_20)#onp.array([0 if x== onp.nan else x for x in confirmed_last_20])
               data[place_]['data']['death'] = onp.append(onp.array([0]),onp.cumsum(onp.append(confirmed_tmp_first_20,confirmed_last_20))).astype(int)
-    elif args.config=="blarb":
-    # MI doesn't report on Sundays
-    #   Oct 19 - add MS
+    elif args.config=="llonger_H_fix":
         for place_ in ['Sweden','Luxembourg','Switzerland','Spain']:
             for date in list(pd.date_range(start=args.start, end=args.end, freq='W').astype(str)):    
                 data[place_]['data'].loc[date, 'confirmed'] = onp.nan
@@ -352,8 +356,10 @@ if __name__ == "__main__":
                data[place_]['data'].loc[date, 'confirmed'] = onp.nan
                data[place_]['data'].loc[date, 'death'] = onp.nan
 
-
-
+        data['Sweden']['data'].loc['2021-04-02','confirmed'] =onp.nan
+        data['Sweden']['data'].loc['2021-04-02','death'] =onp.nan
+        data['Spain']['data'].loc['2021-04-04','confirmed'] =onp.nan
+        data['Spain']['data'].loc['2021-04-04','death'] =onp.nan
     util.redistribute(data['France']['data'], '2021-03-28', 500, 90, 'death')
     util.redistribute(data['France']['data'], '2021-03-28',2000,90,'confirmed')
     # Correct values 9/15 through 9/20 are: 91,304 92,712 94,746 97,279 99,562 101,227 (source: https://www.dhs.wisconsin.gov/covid-19/cases.htm)
