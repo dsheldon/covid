@@ -146,7 +146,7 @@ class SEIRD(SEIRDBase):
                                                 num_frozen = num_frozen,
                                                 confirmed = confirmed,
                                                 death = death,
-                                                 N=N)
+                                                 N=N,T_future=0)
 
         x = None#np.vstack((x0, x))
         y = np.append(y0, y)
@@ -169,7 +169,7 @@ class SEIRD(SEIRDBase):
             beta_f, det_rate_rw_f, x_f, y_f, z_f = self.dynamics(T+T_future+1, 
                                                                  params, 
                                                                  x0,
-                                                                 suffix="_future",N=N)
+                                                                 suffix="_future",N=N,T_future=T_future)
 
             x = None#np.vstack((x, x_f))
             y = np.append(y, y_f)
@@ -235,7 +235,7 @@ class SEIRD(SEIRDBase):
             #
          def scan_body(state, beta):        
                 incidence_history, S = state
-                dE = beta * S/N * np.sum(incidence_history * A)
+                dE = beta * S/N * np.sum(incidence_history * A_rev)
                 new_state = (np.append(incidence_history[1:], dE), S-dE)
                 return new_state, dE
          dE0 = x0 
@@ -259,7 +259,7 @@ class SEIRD(SEIRDBase):
             
          R = N-S-E-I
          return (dI,dD) 
-    def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, suffix="",N=None):
+    def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, suffix="",N=None,T_future=0):
         '''Run SEIRD dynamics for T time steps'''
 
         beta0, \
@@ -290,22 +290,22 @@ class SEIRD(SEIRDBase):
         theta = (beta,sigma,gamma,death_prob,death_rate) 
         new_cases,new_deaths = self.simulate_renewal(x0[1],N,T,theta,CONV_WIDTH=40) 
         # Don't let incident cases/deaths be exactly zero (or worse, negative!)
-        new_cases = np.maximum(new_cases[1:], 0.001)
-        new_deaths = np.maximum(new_deaths[1:], 0.001)
+        new_cases = np.maximum(new_cases[1:], 0.1)
+        new_deaths = np.maximum(new_deaths[1:], 0.1)
  
         # Noisy observations
         with numpyro.handlers.scale(scale=0.5):
             if suffix != "_future":
                  y = observe_nb2("dy" + suffix, new_cases, det_prob, confirmed_dispersion, obs = confirmed)
             else:
-                 y = observe_nb2("dy" + suffix, new_cases[-28:], det_prob[-28:], confirmed_dispersion, obs = confirmed)
+                 y = observe_nb2("dy" + suffix, new_cases[-T_future:], det_prob[-T_future:], confirmed_dispersion, obs = confirmed)
 
 
         with numpyro.handlers.scale(scale=2.0):
             if suffix != "_future":
                 z = observe_nb2("dz" + suffix, new_deaths, det_prob_d, death_dispersion, obs = death)  
             else:
-                z = observe_nb2("dz" + suffix, new_deaths[-28:], det_prob_d, death_dispersion, obs = death)
+                z = observe_nb2("dz" + suffix, new_deaths[-T_future:], det_prob_d, death_dispersion, obs = death)
 
         x=None
         return beta, det_prob, x, y, z

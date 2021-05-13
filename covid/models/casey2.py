@@ -47,6 +47,25 @@ class SEIRD(SEIRDBase):
                  death=None,
                   T_old=None):
 
+
+        import rpy2
+        from rpy2.robjects.packages import importr
+        import rpy2.robjects.numpy2ri
+        from scipy import interpolate
+
+        rpy2.robjects.numpy2ri.activate()
+        splines = importr("splines")
+        predict = importr("stats")
+        T=T-1
+        knots=onp.arange(0,T-10,10)
+        knots = onp.concatenate((knots,onp.array([T+28])))
+        basis = splines.bs(onp.arange(0,T+28),knots=knots,degree=1)
+        basis_matrix = onp.array(basis)
+        num_basis = basis_matrix.shape[1]
+
+
+        tau = numpyro.sample('scale_on_coef',dist.Normal(0,1000))
+        a_raw = numpyro.sample('a_raw',dist.GaussianRandomWalk(scale=1e-2, num_steps=num_basis))
         '''
         Stochastic SEIR model. Draws random parameters and runs dynamics.
         '''        
@@ -104,7 +123,7 @@ class SEIRD(SEIRDBase):
         else:
             drift = 0.
 
-
+        death_dist = numpyro.sample("death_dist",dist.Dirichlet(1*np.ones(40)))
         x0 = SEIRDModel.seed(N=N, I=I0, E=E0, H=H0, D=D0)
         numpyro.deterministic("x0", x0)
 
@@ -138,22 +157,24 @@ class SEIRD(SEIRDBase):
                   death_dispersion,
                   death_prob, 
                   death_rate, 
-                  det_prob_d)
-
+                  det_prob_d, 
+                  death_dist,
+                  basis,tau,a_raw)
         beta, det_prob, x, y, z = self.dynamics(T, 
                                                 params, 
                                                 x0,
                                                 num_frozen = num_frozen,
                                                 confirmed = confirmed,
-                                                death = death)
+                                                death = death,
+                                                 N=N)
 
-        x = np.vstack((x0, x))
+        x = None#np.vstack((x0, x))
         y = np.append(y0, y)
         z = np.append(z0, z)
 
         if T_future > 0:
 
-            params = (beta[-rw_use_last:].mean(), 
+            params = (beta0, 
                       sigma, 
                       gamma, 
                       forecast_rw_scale, 
@@ -163,21 +184,21 @@ class SEIRD(SEIRDBase):
                       death_dispersion,
                       death_prob, 
                       death_rate, 
-                      det_prob_d)
+                      det_prob_d,
+                      death_dist,basis,tau,a_raw)
 
-            beta_f, det_rate_rw_f, x_f, y_f, z_f = self.dynamics(T_future+1, 
+            beta_f, det_rate_rw_f, x_f, y_f, z_f = self.dynamics(T+T_future+1, 
                                                                  params, 
-                                                                 x[-1,:],
-                                                                 suffix="_future")
+                                                                 x0,
+                                                                 suffix="_future",N=N)
 
-            x = np.vstack((x, x_f))
+            x = None#np.vstack((x, x_f))
             y = np.append(y, y_f)
             z = np.append(z, z_f)
 
         return beta, x, y, z, det_prob, death_prob
     
-    
-    def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, suffix=""):
+    def dynamics(self, T, params, x0, num_frozen=0, confirmed=None, death=None, suffix="",N=None):
         '''Run SEIRD dynamics for T time steps'''
 
         beta0, \
@@ -190,7 +211,8 @@ class SEIRD(SEIRDBase):
         death_dispersion, \
         death_prob, \
         death_rate, \
-        det_prob_d = params
+        det_prob_d, \
+        death_dist,basis,tau,a_raw = params
 
         rw = frozen_random_walk("rw" + suffix,
                                 num_steps=T-1,
@@ -202,28 +224,56 @@ class SEIRD(SEIRDBase):
                                   LogisticRandomWalk(loc=det_prob0, 
                                                      scale=rw_scale, 
                                                      drift=0.,
-                                                     num_steps=T-1))
+                                                     num_steps=T))
 
         # Run ODE
-        x = SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
+        def Geometric1(mu):
+             '''Geometric RV supported on 1,2,...'''
+             p = 1/mu
+             log_p = np.log(p)
+             log_1_minus_p = np.log(1-p)
+             def log_prob(k):
+                 return np.where(k > 0, (k-1) * log_1_minus_p + log_p, -np.inf)
+             return log_prob 
+        t = np.arange(40)
+        V_logp = Geometric1(1/gamma)
+        D_logp = Geometric1(1/death_rate)
+        V_pmf = np.exp(V_logp(t))
+        D_pmf = np.exp(D_logp(t))
+        U_pmf =    np.exp(Geometric(1/sigma))    
 
-        numpyro.deterministic("x" + suffix, x[1:])
+        basis_matrix = onp.array(basis)
+        num_basis = basis_matrix.shape[1]
+        if (suffix != "_future"):
+            basis_train= basis_matrix[:T,:]
+            basis_oos_matrix =basis_train#
+        else:
+            basis_oos_matrix=basis_matrix
 
-        x_diff = np.diff(x, axis=0)
-        
-        # Don't let incident cases/deaths be exactly zero (or worse, negative!)
-        new_cases = np.maximum(x_diff[:,6], 0.01)
-        new_deaths = np.maximum(x_diff[:,5], 0.01)
-        
+
+      
+
+        new_cases = np.exp(np.dot(basis_oos_matrix,tau*a_raw))# Don't let incident cases/deaths be exactly zero (or worse, negative!)
+        dI = np.convolve(new_cases,U_pmf,mode='full')[:T]
+        dH = np.convolve(death_prob*dI, V_pmf, mode='full')[:T]
+        new_deaths =  np.convolve(dH, D_pmf,mode='full')[:T]
+
+        new_cases = np.maximum(dI, 0.001)
+        new_deaths = np.maximum(new_deaths, 0.001)
         # Noisy observations
         with numpyro.handlers.scale(scale=0.5):
-            y = observe_nb2("dy" + suffix, new_cases, det_prob, confirmed_dispersion, obs = confirmed)
+            if suffix != "_future":
+                 y = observe_nb2("dy" + suffix, new_cases, det_prob, confirmed_dispersion, obs = confirmed)
+            else:
+                 y = observe_nb2("dy" + suffix, new_cases[-28:], det_prob[-28:], confirmed_dispersion, obs = confirmed)
+
 
         with numpyro.handlers.scale(scale=2.0):
-            z = observe_nb2("dz" + suffix, new_deaths, det_prob_d, death_dispersion, obs = death)  
-
-        
-        return beta, det_prob, x, y, z
+            if suffix != "_future":
+                z = observe_nb2("dz" + suffix, new_deaths, det_prob_d, death_dispersion, obs = death)
+            else:
+                z = observe_nb2("dz" + suffix, new_deaths[-28:], det_prob_d, death_dispersion, obs = death)
+        return None, det_prob, None, y, z
 
     
     
@@ -248,7 +298,6 @@ class SEIRD(SEIRDBase):
             y0 = self.y(samples, forecast=False)[:,-1]
  
         return y0[:,None] + onp.cumsum(dy, axis=1)
-
 
     def z0(self, **args):
         return self.z0(**args)

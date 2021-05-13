@@ -5,7 +5,7 @@ from jax.random import PRNGKey
 import numpyro
 import numpyro.distributions as dist
 
-from ..compartment import SEIRDModel
+from ..compartment import SEIRNetwork
 from .util import observe, observe_nb2, ExponentialRandomWalk, LogisticRandomWalk, frozen_random_walk, clean_daily_obs
 from .base import SEIRDBase, getter
 
@@ -105,7 +105,7 @@ class SEIRD(SEIRDBase):
             drift = 0.
 
 
-        x0 = SEIRDModel.seed(N=N, I=I0, E=E0, H=H0, D=D0)
+        x0 = SEIRNetwork.seed(N=N, I=I0, E=E0)
         numpyro.deterministic("x0", x0)
 
         # Split observations into first and rest
@@ -125,8 +125,6 @@ class SEIRD(SEIRDBase):
         with numpyro.handlers.scale(scale=0.5):
             y0 = observe_nb2("dy0", x0[6], det_prob0, confirmed_dispersion, obs=confirmed0)
             
-        with numpyro.handlers.scale(scale=2.0):
-            z0 = observe_nb2("dz0", x0[5], det_prob_d, death_dispersion, obs=death0)
 
         params = (beta0, 
                   sigma, 
@@ -205,15 +203,15 @@ class SEIRD(SEIRDBase):
                                                      num_steps=T-1))
 
         # Run ODE
-        x = SEIRDModel.run(T, x0, (beta, sigma, gamma, death_prob, death_rate))
+        x = SEIRNetwork.run(T, x0, (beta, sigma, gamma, deg_dist, init_susc))
 
         numpyro.deterministic("x" + suffix, x[1:])
 
         x_diff = np.diff(x, axis=0)
         
         # Don't let incident cases/deaths be exactly zero (or worse, negative!)
-        new_cases = np.maximum(x_diff[:,6], 0.01)
-        new_deaths = np.maximum(x_diff[:,5], 0.01)
+        new_cases = np.maximum(x_diff[:,6], 0.001)
+        new_deaths = np.maximum(x_diff[:,5], 0.001)
         
         # Noisy observations
         with numpyro.handlers.scale(scale=0.5):

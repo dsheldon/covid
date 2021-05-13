@@ -17,7 +17,6 @@ from covid.compartment import SEIRDModel
 '''Utility to define access method for time varying fields'''
 def getter(f):
     def get(self, samples, forecast=False):
-         print (samples.keys())
          return samples[f + '_future'] if forecast else self.combine_samples(samples, f)
     return get
 
@@ -287,7 +286,6 @@ class Model():
         # Plot observation
         forecast_end = forecast_start + pd.Timedelta(T_future-1, "d")
         obs[start:forecast_end].plot(ax=ax, style='o')
-        print (obs) 
         # Plot vertical line at end of observed data
         ax.axvline(obs_end, linestyle='--', alpha=0.5)
         ax.grid(axis='y')

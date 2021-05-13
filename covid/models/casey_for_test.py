@@ -35,7 +35,7 @@ class SEIRD(SEIRDBase):
                  gamma_shape = 100.,
                  det_prob_est = 0.3,
                  det_prob_conc = 50.,
-                 confirmed_dispersion=.3,
+                 confirmed_dispersion=0.3,
                  death_dispersion=0.3,
                  rw_scale = 2e-1,
                  forecast_rw_scale = 0.,
@@ -62,26 +62,30 @@ class SEIRD(SEIRDBase):
         splines = importr("splines")
         predict = importr("stats")        
         T=T-1
-        knots=onp.arange(0,T,10)
+        knots=onp.arange(0,T-10,2)
         knots = onp.concatenate((knots,onp.array([T+28])))
-         
+  
 
+        def fill_nan(A):
+             '''
+             interpolate to fill nan values
+             '''
+             inds = onp.arange(A.shape[0])
+             good = onp.where(onp.isfinite(A))
+             f = interpolate.interp1d(inds[good], A[good],bounds_error=False)
+             B  = onp.where(onp.isfinite(A),A,f(inds))
+             return B
 
         if confirmed is not None:
            confirmed = clean_daily_obs(onp.diff(confirmed))
-           confirmed = onp.nan_to_num(confirmed)
-           death = clean_daily_obs(onp.diff(death)) 
-           death = onp.nan_to_num(death)
-     
-        basis = splines.bs(onp.arange(0,T+28),knots=knots,degree=1)
+           death = clean_daily_obs(onp.diff(death))
+        basis = splines.bs(onp.arange(0,T+28),knots=knots,degree=2)
+
+#preds=predict.predict(basis, newx=np.arange(len(df_full.X.values),len(df_full.X.values)+28))
+#pred_mat = np.array(preds)
         
-        day_of_week_spline = knots=onp.arange(10)
-        basis_day_of_week = onp.array(splines.bs(onp.arange(10),knots=knots,degree=3))
-        
-       
         basis_matrix = onp.array(basis)
         num_basis = basis_matrix.shape[1]
-        num_basis_week = basis_day_of_week.shape[1]
         if (T_future == 0):
             basis_train= basis_matrix[:T,:]
 
@@ -95,12 +99,8 @@ class SEIRD(SEIRDBase):
 
 
         tau = numpyro.sample('scale_on_coef',dist.Normal(0,1000))
-        a_raw = numpyro.sample('a_raw',dist.GaussianRandomWalk(scale=1e-2, num_steps=num_basis))        
+        a_raw = numpyro.sample('a_raw',dist.GaussianRandomWalk(scale=1e-1, num_steps=num_basis))        
         
-        tau2 = numpyro.sample('scale_on_coef2',dist.Normal(0,1000))
-        a_raw2 = numpyro.sample('a_raw2',dist.GaussianRandomWalk(scale=1e-1, num_steps=num_basis_week))
-        day_of_week_effect = np.dot(basis_day_of_week,np.dot(tau2,a_raw2))
-
         if confirmed is not None:
              y0 = numpyro.sample('dy0',dist.Normal(0,1),obs=confirmed[0])
              z0 = numpyro.sample('dz0',dist.Normal(0,1),obs=death[0])        
@@ -109,16 +109,18 @@ class SEIRD(SEIRDBase):
              z0 = numpyro.sample('dz0',dist.Normal(0,1))
         case_detection = numpyro.sample('det_prob',LogisticRandomWalk(det_prob0,scale=.1,num_steps=T))
 
-        if T_future >0:
+        if T_future > 0:
            case_detection = np.concatenate((case_detection,np.repeat(case_detection[-1],28)))
-           day_of_week_effect_repeated = np.tile(day_of_week_effect, T)[:(T+T_future)]
-
-        else:  
-           day_of_week_effect_repeated = np.tile(day_of_week_effect, T+T_future)[:(T+T_future)]
-       
+        #   beta = np.concatenate((beta,np.repeat(beta[-1],28)))
+  
+        
+#        tau = numpyro.sample('scale_on_coef',dist.Normal(0,100))
 
         
+
+
         y_hat =  numpyro.deterministic('y_hat', np.exp(np.dot(np.array(basis_oos_matrix), np.dot(tau,a_raw))))
+
         cfr = numpyro.sample('cfr',dist.Beta(1,100))
 
         par=0
@@ -175,12 +177,12 @@ pdf(par,4)*y_hat[35:num_data-offset+35]+
 pdf(par,3)*y_hat[36:num_data-offset+36] +
 pdf(par,2)*y_hat[37:num_data-offset+37]+
 pdf(par,1)*y_hat[38:num_data-offset+38] +
-pdf(par,0)*y_hat[39:num_data-offset+39] ))
+pdf(par,0)*y_hat[39:num_data-offset+39]  ))
 
 
 
 
-        d_hat = d_hat + 1
+
 
         death_dispersion = numpyro.sample("death_dispersion", 
                                             dist.TruncatedNormal(low=0.1,
