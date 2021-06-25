@@ -80,57 +80,41 @@ llonger_H_fix = {
     }
 }
 
-lower_det = {
-    'model': covid.models.SEIRD_incident.SEIRD,
-    'args'  : {
-        'gamma_shape':  1000,
-        'sigma_shape':  1000,
-        'resample_high': 80,
-        'rw_use_last': 10,
-        'rw_scale': 1e-1,
-        'H_duration_est': 25.0,
-        'det_prob_est': 0.1
-    }
-}
-
-
-# For debugging on Jan 3
+# For debugging on May 10
+#   start with llonger_H_fix
+#   increase priors on sigma, beta, death_prob, death_rate by factor of 10
 debug = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {
         'gamma_shape':  1000,
-        'sigma_shape':  1000,
+        'sigma_shape':  10000,
+        'beta_shape': 10,
+        'death_rate_shape': 100,
+        'death_prob_conc': 1000,
         'resample_high': 80,
         'rw_use_last': 10,
+        'rw_scale': 1e-1,
         'H_duration_est': 25.0,
         'num_warmup': 100,
         'num_samples': 100
     }
 }
 
-debug2 = {
-    'model': covid.models.SEIRD_incident.SEIRD,
-    'args'  : {
-        'gamma_shape':  1000,
-        'sigma_shape':  1000,
-        'resample_high': 80,
-        'rw_use_last': 10,
-        'H_duration_est': 25.0
-    }
-}
-
-
-# For debugging on Jan 3
+# For debugging on May 10
+#   start with llonger_H_fix
+#   increase priors on sigma, beta, death_prob, death_rate by factor of 10
 fix = {
     'model': covid.models.SEIRD_incident.SEIRD,
     'args'  : {
-        'gamma_shape':  100,
-        'sigma_shape':  100,
+        'gamma_shape':  1000,
+        'sigma_shape':  10000,
+        'beta_shape': 10,
+        'death_rate_shape': 100,
+        'death_prob_conc': 1000,
         'resample_high': 80,
         'rw_use_last': 10,
-        'H_duration_est': 25.0,
-        'beta_shape': 1,
         'rw_scale': 1e-1,
+        'H_duration_est': 25.0
     }
 }
 

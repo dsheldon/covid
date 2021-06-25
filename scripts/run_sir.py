@@ -29,12 +29,17 @@ if __name__ == "__main__":
 
     data = config.get('data') or util.load_data()
 
+    # Juneteenth Friday (plus Sat/Sun)
+    for place in ['ID', 'SD', 'WV']:
+        data[place]['data'].loc['2021-06-18', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-06-18', 'death'] = onp.nan
+
     
     # MI doesn't report on Sundays
     #   April  4, 2021 --- add WA
     for place in ['MI', 'WA']:
-        data[place]['data'].loc['2021-05-02', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-05-02', 'death'] = onp.nan
+        data[place]['data'].loc['2021-06-20', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-06-20', 'death'] = onp.nan
 
     # RI, CT, GU don't report on Saturdays/Sundays
     #   Oct 19 -- add WI (removed Oct 25)
@@ -48,12 +53,22 @@ if __name__ == "__main__":
     #   April 18, 2021 --- add ID
     #   May   01, 2021 --- add SD
     #   May   01, 2021 --- add NV
-    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY', 'NM', 'NC', 'ID', 'SD', 'NV']:
-        data[place]['data'].loc['2021-05-01', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-05-02', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-05-01', 'death'] = onp.nan
-        data[place]['data'].loc['2021-05-02', 'death'] = onp.nan
+    #   May   16, 2021 --- add NE
+    #   May   23, 2021 --- add WV
+    #   May   31, 2021 --- add AL
+    #   June  06, 2021 --- add DC, MT, VI, WI
+    #   June  12, 2021 --- add SC
+    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY', 'NM', 'NC', 'ID', 'SD', 'NV', 'NE', 'WV', 'AL', 'DC', 'MT', 'VT', 'WI', 'SC', 'FL']:
+        data[place]['data'].loc['2021-06-19', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-06-20', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-06-19', 'death'] = onp.nan
+        data[place]['data'].loc['2021-06-20', 'death'] = onp.nan
 
+    # FL is updating once per week
+    util.redistribute(data['FL']['data'], '2021-06-11', 11454*6//7, 6, 'confirmed')
+    util.redistribute(data['FL']['data'], '2021-06-11', 280*6//7, 6, 'death')
+    util.redistribute(data['FL']['data'], '2021-06-18', 10095*6//7, 6, 'confirmed')
+    util.redistribute(data['FL']['data'], '2021-06-18', 290*6//7, 6, 'death')
 
     # OK is updating death data intermittently. Adjust.
     util.redistribute(data['OK']['data'], '2021-03-09', 147, 6, 'death')
@@ -68,12 +83,104 @@ if __name__ == "__main__":
     util.redistribute(data['OK']['data'], '2021-04-14', 28*6//7, 6, 'death')
     util.redistribute(data['OK']['data'], '2021-04-21', 19*6//7, 6, 'death')
     util.redistribute(data['OK']['data'], '2021-04-28', 72*6//7, 6, 'death')
-    data['OK']['data'].loc['2021-04-29':, 'death'] = onp.nan
+    util.redistribute(data['OK']['data'], '2021-05-05', 44*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-05-12', 46*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-05-19', 40*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-05-26', 40*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-05-26', 333, 90, 'death')
+    util.redistribute(data['US']['data'], '2021-05-26', 333, 90, 'death')
+    util.redistribute(data['OK']['data'], '2021-06-02', 25*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-06-09', 9*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-06-16', 29*6//7, 6, 'death')
+    data['OK']['data'].loc['2021-06-17':, 'death'] = onp.nan
 
     # Ohio death is now delayed and attributed to time of death
     # by JHU. The last week (or more) is basically empty. Guesstimate
     # how far back and set to missing.
-    data['OH']['data'].loc['2021-04-18':, 'death'] = onp.nan
+    data['OH']['data'].loc['2021-06-06':, 'death'] = onp.nan
+
+    util.redistribute(data['WA']['data'], '2021-06-14', -38, 90, 'death')
+
+    # JHU
+    util.redistribute(data['AK']['data'], '2021-06-11', 4, 30, 'death')
+
+    # https://dhhr.wv.gov/News/2021/Pages/COVID-19-Daily-Update-6-9-2021.aspx
+    util.redistribute(data['WV']['data'], '2021-06-09', 24, 90, 'death')
+
+    util.redistribute(data['WA']['data'], '2021-06-08', -81, 90, 'death')
+
+    # JHU
+    util.redistribute(data['US']['data'], '2021-06-06', 85, 90, 'death')
+    util.redistribute(data['CA']['data'], '2021-06-06', 85, 90, 'death')
+
+    # JHU: Indiana 765 backlogged cases June 3
+    util.redistribute(data['IN']['data'], '2021-06-03', 765, 90, 'confirmed')
+    util.redistribute(data['US']['data'], '2021-06-03', 765, 90, 'confirmed')
+
+    util.redistribute(data['WI']['data'], '2021-05-31', 16, 90, 'death')
+    util.redistribute(data['WI']['data'], '2021-06-01',  9, 90, 'death')
+    util.redistribute(data['WI']['data'], '2021-06-02',  9, 90, 'death')
+    util.redistribute(data['WI']['data'], '2021-06-03', 20, 90, 'death')
+    util.redistribute(data['WI']['data'], '2021-06-04', 21, 90, 'death')
+
+    # https://www.penbaypilot.com/article/update-maine-s-covid-19-death-toll-rises-10/147794
+    util.redistribute(data['ME']['data'], '2021-06-03', 7, 36, 'death')
+
+    # https://www.kentucky.com/news/coronavirus/article251818393.html
+    util.redistribute(data['KY']['data'], '2021-06-01', 260, 90, 'death')
+
+    # https://twitter.com/Delaware_DHSS
+    util.redistribute(data['DE']['data'], '2021-06-02', 3, 90, 'death')
+    util.redistribute(data['DE']['data'], '2021-06-03', 2, 90, 'death')
+    util.redistribute(data['DE']['data'], '2021-06-04', 5, 90, 'death')
+    util.redistribute(data['DE']['data'], '2021-06-05', 3, 90, 'death')
+
+    util.redistribute(data['WI']['data'], '2021-05-27', 39, 90, 'death')
+
+    # https://github.com/CSSEGISandData/COVID-19/issues/4147
+    util.redistribute(data['CA']['data'], '2021-05-27', 3857, 90, 'confirmed')
+    util.redistribute(data['US']['data'], '2021-05-27', 3857, 90, 'confirmed')
+
+    # JHU / https://southernmarylandchronicle.com/2021/05/27/maryland-department-of-health-vital-statistics-administration-issues-revision-of-covid-19-death-data/
+    util.redistribute(data['MD']['data'], '2021-05-27', 517+21, 90, 'death')
+    util.redistribute(data['US']['data'], '2021-05-27', 517+21, 90, 'death')
+
+    # JHU
+
+    # JHU / https://www.kob.com/new-mexico-news/new-mexico-to-add-approximately-100-more-covid-19-deaths-to-states-total/6117386/
+    util.redistribute(data['NM']['data'], '2021-05-24', 110, 90, 'death')
+
+    # https://www.wmtw.com/article/maine-coronavirus-covid19-cases-deaths-update-may-20/36487747
+    util.redistribute(data['ME']['data'], '2021-05-20', 8, 90, 'death')
+
+    # https://www.nytimes.com/interactive/2021/us/delaware-covid-cases.html
+    util.redistribute(data['DE']['data'], '2021-05-19', 653, 90, 'confirmed')
+
+    # https://content.govdelivery.com/accounts/AKDHSS/bulletins/2d9a43d
+    util.redistribute(data['AK']['data'], '2021-05-17', 10, 90, 'death')
+
+    # JHU report
+    util.redistribute(data['MO']['data'], '2021-05-18', 113, 90, 'death')
+
+    # JHU Alabama reported large numbers of backlogged cases on both 5/13 (306) and 5/14 (2964). 
+    # More details, including quotes from the source, are available on our GitHub repository:
+    # https://github.com/CSSEGISandData/COVID-19/issues/4087 
+    util.redistribute(data['AL']['data'], '2021-05-13', 306, 90, 'confirmed')
+    util.redistribute(data['AL']['data'], '2021-05-14', 2964, 90, 'confirmed')
+    util.redistribute(data['AL']['data'], '2021-05-14', 1500, 90, 'confirmed')
+    util.redistribute(data['AL']['data'], '2021-05-15', 1500, 90, 'confirmed')
+
+    util.redistribute(data['CO']['data'], '2021-05-12', 20, 90, 'death')
+    
+    # weirdness
+    util.redistribute(data['NE']['data'], '2021-05-12', 10, -10, 'death')
+    util.redistribute(data['NE']['data'], '2021-05-13', 29, -9, 'death')
+    util.redistribute(data['NE']['data'], '2021-05-21', 12, 5, 'death')
+
+    # JHU weekly report
+    util.redistribute(data['NJ']['data'], '2021-05-05', 1295-98, 90, 'confirmed')
+
+    util.redistribute(data['IA']['data'], '2021-05-06', 15, 5, 'death')
 
     # possible weird effects of weekend cycle
     util.redistribute(data['NM']['data'], '2021-04-05', 443*2//3, 2, 'confirmed')
@@ -93,8 +200,8 @@ if __name__ == "__main__":
 
     util.redistribute(data['IA']['data'], '2021-04-30', 16, 5, 'death')
 
-    # fix weird jump then drop on 4-30 and 5-01
-    util.redistribute(data['CA']['data'], '2021-05-01', -312, 1, 'death')
+    # fix weird jump then drop on 4-30 and 5-01 (fixed in JHU data as of May 09)
+    # util.redistribute(data['CA']['data'], '2021-05-01', -312, 1, 'death')
 
     # https://www.nytimes.com/interactive/2021/us/tennessee-covid-cases.html
     util.redistribute(data['TN']['data'], '2021-04-19', 2000, 90, 'confirmed')
@@ -541,7 +648,7 @@ if __name__ == "__main__":
     util.redistribute(data['AZ']['data'], '2020-09-18', 764, 90, 'confirmed')
 
     # Correct values 9/15 through 9/20 are: 91,304 92,712 94,746 97,279 99,562 101,227 (source: https://www.dhs.wisconsin.gov/covid-19/cases.htm)
-    data['WI']['data'].loc['2020-09-15':'2020-09-20', 'confirmed'] = [91304, 92712, 94746, 97279, 99562, 101227]
+    # data['WI']['data'].loc['2020-09-15':'2020-09-20', 'confirmed'] = [91304, 92712, 94746, 97279, 99562, 101227]
 
 
 

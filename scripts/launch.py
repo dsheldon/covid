@@ -82,6 +82,7 @@ if __name__ == "__main__":
 --nodes=1 \
 --ntasks=1 \
 --mem=1000 \
+--time=04:00:00 \
 --partition=defq \
 ./run_sir.sh "{place}" --start {start} --end {forecast_date} --config {config} --prefix {prefix} {extra_args}'''
                                 
