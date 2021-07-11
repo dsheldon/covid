@@ -53,7 +53,7 @@ if __name__ == "__main__":
     # "All 17 deaths were identified through death certificate review"
     util.redistribute(data['AK']['data'], '2021-02-02', 17, 60, 'death')
 
-    # https://twitter.com/Delaware_DHSS/status/1357838111879921671
+    # https:;;
     #util.redistribute(data['DE']['data'], '2021-02-05', 54, 90, 'death')
     # https://twitter.com/Delaware_DHSS/status/1357060070538940420
     #util.redistribute(data['DE']['data'], '2021-02-03', 17, 30, 'death')
@@ -320,34 +320,7 @@ if __name__ == "__main__":
              return B
 
     from scipy import interpolate
-    if args.config =="casey" or args.config=="SEIRD_renewal":
-        for place_ in ['Sweden']:
-              confirmed_tmp = onp.diff(data[place_]['data']['confirmed'])
-              #confirmed_tmp = onp.repeat(11000,len(confirmed_tmp))#confirmed_tmp[-4]
-              confirmed_tmp[-7:] = 10000#confirmed_tmp[-4]
-              #confirmed_tmp[-3] = 9000#confirmed_tmp[-4]
-              data[place_]['data']['confirmed'] =onp.append(onp.array([0]),onp.cumsum(confirmed_tmp))
-        for place_ in ['Sweden','Switzerland','Spain']:
-              confirmed_tmp = onp.diff(data[place_]['data']['confirmed'])
-              confirmed_tmp_first_20 = confirmed_tmp[:20] 
-              confirmed_last_20 = confirmed_tmp[20:]
-              confirmed_last_20 = onp.array([onp.nan if x==0 else x for x in confirmed_last_20])
-              confirmed_last_20 = fill_nan(confirmed_last_20)
-              confirmed_last_20[-1] = confirmed_last_20[-3]
-              confirmed_last_20[-2] = confirmed_last_20[-3] 
-              confirmed_last_20 = onp.nan_to_num(confirmed_last_20)#onp.array([0 if x== onp.nan else x for x in confirmed_last_20])
-              data[place_]['data']['confirmed'] =onp.append(onp.array([0]),onp.cumsum(onp.append(confirmed_tmp_first_20,confirmed_last_20)))            
-    
-              confirmed_tmp = onp.diff(data[place_]['data']['death'])
-              confirmed_tmp_first_20 = confirmed_tmp[:20]
-              confirmed_last_20 = confirmed_tmp[20:]
-              confirmed_last_20 = onp.array([onp.nan if x==0 else x for x in confirmed_last_20])
-              confirmed_last_20 = fill_nan(confirmed_last_20)
-              confirmed_last_20[-1] = confirmed_last_20[-3]
-              confirmed_last_20[-2] = confirmed_last_20[-3]
-              confirmed_last_20 = onp.nan_to_num(confirmed_last_20)#onp.array([0 if x== onp.nan else x for x in confirmed_last_20])
-              data[place_]['data']['death'] = onp.append(onp.array([0]),onp.cumsum(onp.append(confirmed_tmp_first_20,confirmed_last_20))).astype(int)
-    elif args.config=="llonger_H_fix":
+    if args.config=="SEIRD_renewal" or args.config=="SEIRD_renewal_abalation2":
         for place_ in ['Sweden','Luxembourg','Switzerland','Spain']:
             for date in list(pd.date_range(start=args.start, end=args.end, freq='W').astype(str)):    
                 data[place_]['data'].loc[date, 'confirmed'] = onp.nan
@@ -364,6 +337,27 @@ if __name__ == "__main__":
     util.redistribute(data['France']['data'], '2021-03-28',2000,90,'confirmed')
     # Correct values 9/15 through 9/20 are: 91,304 92,712 94,746 97,279 99,562 101,227 (source: https://www.dhs.wisconsin.gov/covid-19/cases.htm)
 
+    #from tsmoothie.utils_func import sim_randomwalk
+    #from tsmoothie.smoother import LowessSmoother
+    #data_incident = data[place]['data']['confirmed']
+    #data_incident = data_incident[~onp.isnan(data_incident)] #onp.nan_to_num(data_incident)
+    #smoother = LowessSmoother(smooth_fraction=0.1, iterations=1)
+    #smoother.smooth(data_incident)
+    #low, up = smoother.get_intervals('prediction_interval')
+    #points = smoother.data[0]
+    #print (len(points))
+    #print (len(data[place]['data']['confirmed']))
+    #up_points = up[0]
+    #low_points = low[0]
+
+    #for i in range(len(points)-1, 0, -1):
+    #    current_point = points[i]
+    #    current_up = up_points[i]
+    #    current_low = low_points[i]
+      #  if current_point > current_up or current_point < current_low:
+    #         print(f'found an outlier value: {current_point}')
+     #   print (data_incident[i])
+   # sys.exit()
     if args.run:
         util.run_place(data,
                        args.place,

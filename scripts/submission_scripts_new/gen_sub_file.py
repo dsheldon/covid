@@ -92,8 +92,8 @@ def merge_df(fips_codes,forecast,region):
 
 
 
-forecast_date = "2021-05-09" #pd.to_datetime(sys.argv[1])
-model="llonger_H_fix"  # "SEIRD_renewal_ablation2" #"SEIRD_renewal"#sys.argv[2]
+forecast_date = "2021-07-04" #pd.to_datetime(sys.argv[1])
+model=  "llonger_H_fix"#"SEIRD_renewal_ablation2"#sys.argv[2]
 samples_directory = "/mnt/nfs/work1/sheldon/sheldon/covid-results/"#sys.argv[3]
 #samples_directory="/mnt/nfs/work1/sheldon/gcgibson/"
 samples_directory = samples_directory+"/"+model + "/" +forecast_date+"/samples/"
@@ -105,7 +105,7 @@ do_dz = "T" # sys.argv[6]
 do_y = "F" # sys.argv[7]
 do_dy = "F" # sys.argv[8]
 
-model_str = "MechBayes" # sys.argv[8]
+model_str =  "MechBayes" # sys.argv[8]
 
 forecast_date = pd.to_datetime(forecast_date)
 

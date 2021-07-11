@@ -5,7 +5,7 @@ from pathlib import Path
 import time
 
 
-STATES_AND_US=["US", "AS", "GU", "MP", "PR", "VI", "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
+#STATES_AND_US=["US", "AS", "GU", "MP", "PR", "VI", "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"]
 
 STATES_AND_US=["Belgium","Bulgaria","Czechia","Denmark","Germany","Estonia","Ireland","Greece","Spain","France","Croatia","Italy","Cyprus","Latvia","Lithuania","Luxembourg","Hungary","Malta","Netherlands","Austria","Poland","Portugal","Romania","Slovenia","Slovakia","Finland","Sweden","United Kingdom","Iceland","Liechtenstein","Norway","Switzerland"]#["Germany","France","United Kingdom","Ireland","Italy"]
 
@@ -17,8 +17,9 @@ DEFAULT_CONFIGS = ['llonger_H_fix']
 #DEFAULT_CONFIGS=['casey','llonger_H_fix','SEIRD_renewal']
 #DEFAULT_CONFIGS = ['llonger_H_fix','SEIRD_renewal_ablation2']#,'llonger_H_fix']
 DEFAULT_CONFIGS = ['llonger_H_fix','SEIRD_renewal_ablation2']
+DEFAULT_CONFIGS = ['SEIRD_renewal_exp_growth']
 #TODAY = "2020-06-04"# pd.to_datetime("today").strftime('%Y-%m-%d')
-TODAY = "2021-05-09"
+TODAY = "2021-07-04"
 
 
 if __name__ == "__main__":
@@ -36,7 +37,8 @@ if __name__ == "__main__":
     # dates
     parser.add_argument('--start', help='start date', default='2020-03-04')
     parser.add_argument('--forecast_dates', nargs="+", help='forecast dates', default=[TODAY])
-    parser.add_argument('--num_sundays', help="use the last n sundays as forecast dates", type=int, default=None)
+    parser.add_argument('--num_sundays', help="use the last n sundays as forecast dates", type=int, default=52)
+    #52
 
     # other
     parser.add_argument('--root', help='root directory for output', default='/mnt/nfs/work1/sheldon/gcgibson/')

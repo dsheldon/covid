@@ -1,6 +1,6 @@
 #!/bin/bash
-MODEL_NAME=SEIRD_renewal_ablation2
-DATE=2021-05-09
+MODEL_NAME=SEIRD_renewal #SEIRD_renewal_ablation2
+DATE=2021-03-28
 DIR=/mnt/nfs/work1/sheldon/gcgibson/$MODEL_NAME/$DATE
 #DIR=results
 PLACES=${2:-../vis/countries.js}

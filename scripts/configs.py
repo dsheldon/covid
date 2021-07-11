@@ -2,6 +2,8 @@ import covid.models.SEIRD
 import covid.models.SEIRD_variable_detection
 import covid.models.casey
 import covid.models.casey2
+import covid.models.casey3
+import covid.models.casey4
 import covid.models.casey_eu
 import covid.models.SEIRD_renewal
 import covid.models.SEIRD_renewal_abalation
@@ -14,7 +16,7 @@ import covid.models.SEIRD_renewal_ablation7
 import covid.models.SEIRD_incident
 import covid.util as util
 import covid.models.sm
-
+import covid.models.SEIRD_renewal_exp_growth
 # 2020-04-25 forecast (?)
 SEIRD = {
     'model' : covid.models.SEIRD.SEIRD,
@@ -110,7 +112,7 @@ casey_eu = {
 }
 
 casey2 = {
-    'model': covid.models.casey.SEIRD,
+    'model': covid.models.casey2.SEIRD,
     'args'  : {
         'gamma_shape':  1000,
         'sigma_shape':  1000,
@@ -118,6 +120,26 @@ casey2 = {
         'H_duration_est': 25.0
     }
 }
+casey3 = {
+    'model': covid.models.casey3.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'H_duration_est': 25.0
+    }
+}
+
+casey4 = {
+    'model': covid.models.casey4.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'rw_use_last': 10,
+        'H_duration_est': 25.0
+    }
+}
+
 SEIRD_renewal = {
     'model': covid.models.SEIRD_renewal.SEIRD,
     'args'  : {
@@ -129,6 +151,22 @@ SEIRD_renewal = {
         'H_duration_est': 25.0
     }
 }
+
+
+
+SEIRD_renewal_exp_growth = {
+    'model': covid.models.SEIRD_renewal_exp_growth.SEIRD,
+    'args'  : {
+        'gamma_shape':  1000,
+        'sigma_shape':  1000,
+        'resample_high': 80,
+        'rw_use_last': 10,
+        'rw_scale': 1e-1,
+        'H_duration_est': 25.0
+    }
+}
+
+
 
 SEIRD_renewal_ablation = {
     'model': covid.models.SEIRD_renewal_abalation.SEIRD,
