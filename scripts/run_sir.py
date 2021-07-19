@@ -7,6 +7,7 @@ import covid.util as util
 import configs
 import numpy as onp
 
+#test
 
 if __name__ == "__main__":
 
@@ -30,16 +31,17 @@ if __name__ == "__main__":
     data = config.get('data') or util.load_data()
 
     # Juneteenth Friday (plus Sat/Sun)
-    for place in ['ID', 'SD', 'WV']:
-        data[place]['data'].loc['2021-06-18', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-06-18', 'death'] = onp.nan
+    # for place in ['ID', 'SD', 'WV']:
+    #     data[place]['data'].loc['2021-06-18', 'confirmed'] = onp.nan
+    #     data[place]['data'].loc['2021-06-18', 'death'] = onp.nan
 
     
     # MI doesn't report on Sundays
     #   April  4, 2021 --- add WA
-    for place in ['MI', 'WA']:
-        data[place]['data'].loc['2021-06-20', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-06-20', 'death'] = onp.nan
+    #   July  18, 2021 --- add ME
+    for place in ['WA', 'ME']:
+        data[place]['data'].loc['2021-07-18', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-07-18', 'death'] = onp.nan
 
     # RI, CT, GU don't report on Saturdays/Sundays
     #   Oct 19 -- add WI (removed Oct 25)
@@ -58,17 +60,38 @@ if __name__ == "__main__":
     #   May   31, 2021 --- add AL
     #   June  06, 2021 --- add DC, MT, VI, WI
     #   June  12, 2021 --- add SC
-    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY', 'NM', 'NC', 'ID', 'SD', 'NV', 'NE', 'WV', 'AL', 'DC', 'MT', 'VT', 'WI', 'SC', 'FL']:
-        data[place]['data'].loc['2021-06-19', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-06-20', 'confirmed'] = onp.nan
-        data[place]['data'].loc['2021-06-19', 'death'] = onp.nan
-        data[place]['data'].loc['2021-06-20', 'death'] = onp.nan
+    #   June  26, 2021 --- add MI, IL, KY
+    #   July  04, 2021 --- add AR, IN, NH, US
+    #   July  05, 2021 --- add UT
+    #   July  11, 2021 --- add GA
+    #   July  12, 2021 --- remove US
+    #   July  18, 2021 --- add OR, MA, MN
+    for place in ['RI', 'GU', 'KS', 'CT', 'TN', 'AK', 'LA', 'WY', 'NM', 'NC', 'ID', 'SD', 'NV', 'NE', 'WV', 'AL', 'DC', 'MT', 'VT', 'WI', 'SC', 'FL', 'MI', 'IL', 'KY', 'AR', 'IN', 'NH', 'UT', 'GA', 'OR', 'MA', 'MN']:
+        data[place]['data'].loc['2021-07-17', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-07-18', 'confirmed'] = onp.nan
+        data[place]['data'].loc['2021-07-17', 'death'] = onp.nan
+        data[place]['data'].loc['2021-07-18', 'death'] = onp.nan
+    
+    # JHU: IA now updating only once per week
+    util.redistribute(data['IA']['data'], '2021-07-07', 950, -1, 'confirmed')
+    util.redistribute(data['IA']['data'], '2021-07-14', 651*4//5, 5, 'confirmed')
+    util.redistribute(data['IA']['data'], '2021-07-14', 9*4//5, 5, 'death')
+    data['IA']['data'].loc['2021-07-15':, 'confirmed'] = onp.nan
+    data['IA']['data'].loc['2021-07-15':, 'death'] = onp.nan
 
     # FL is updating once per week
     util.redistribute(data['FL']['data'], '2021-06-11', 11454*6//7, 6, 'confirmed')
     util.redistribute(data['FL']['data'], '2021-06-11', 280*6//7, 6, 'death')
     util.redistribute(data['FL']['data'], '2021-06-18', 10095*6//7, 6, 'confirmed')
     util.redistribute(data['FL']['data'], '2021-06-18', 290*6//7, 6, 'death')
+    util.redistribute(data['FL']['data'], '2021-06-25', 11048*6//7, 6, 'confirmed')  # 11048 = # cases on 06-25
+    util.redistribute(data['FL']['data'], '2021-06-25', 217*6//7, 6, 'death')        # 217 = # deaths on 06-25
+    util.redistribute(data['FL']['data'], '2021-07-02', 15684*6//7, 6, 'confirmed')
+    util.redistribute(data['FL']['data'], '2021-07-02', 213*6//7, 6, 'death')
+    util.redistribute(data['FL']['data'], '2021-07-09', 23747*6//7, 6, 'confirmed')
+    util.redistribute(data['FL']['data'], '2021-07-09', 172*6//7, 6, 'death')
+    util.redistribute(data['FL']['data'], '2021-07-16', 45449*6//7, 6, 'confirmed')
+    util.redistribute(data['FL']['data'], '2021-07-16', 231*6//7, 6, 'death')
 
     # OK is updating death data intermittently. Adjust.
     util.redistribute(data['OK']['data'], '2021-03-09', 147, 6, 'death')
@@ -92,12 +115,32 @@ if __name__ == "__main__":
     util.redistribute(data['OK']['data'], '2021-06-02', 25*6//7, 6, 'death')
     util.redistribute(data['OK']['data'], '2021-06-09', 9*6//7, 6, 'death')
     util.redistribute(data['OK']['data'], '2021-06-16', 29*6//7, 6, 'death')
-    data['OK']['data'].loc['2021-06-17':, 'death'] = onp.nan
+    util.redistribute(data['OK']['data'], '2021-06-23', 30*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-06-30', 4*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-07-07', 18*6//7, 6, 'death')
+    util.redistribute(data['OK']['data'], '2021-07-14', 11*6//7, 6, 'death')
+    data['OK']['data'].loc['2021-07-15':, 'death'] = onp.nan
+
+    # SD is now reporting once weekly on Wed 
+    util.redistribute(data['SD']['data'], '2021-07-07', 60*4//5, 5, 'confirmed')
+    util.redistribute(data['SD']['data'], '2021-07-14', 98*6//7, 6, 'confirmed')
 
     # Ohio death is now delayed and attributed to time of death
     # by JHU. The last week (or more) is basically empty. Guesstimate
     # how far back and set to missing.
-    data['OH']['data'].loc['2021-06-06':, 'death'] = onp.nan
+    data['OH']['data'].loc['2021-07-04':, 'death'] = onp.nan
+
+    # https://www.pressherald.com/2021/07/15/maine-reports-another-49-cases-of-covid-19-and-10-deaths/
+    util.redistribute(data['ME']['data'], '2021-07-15', 10, 90, 'death')
+
+    util.redistribute(data['AL']['data'], '2021-07-07', 1613*4//5, 5, 'confirmed')
+    util.redistribute(data['AL']['data'], '2021-07-07', 29*4//5, 5, 'confirmed')
+
+    # https://www.seattletimes.com/seattle-news/health/coronavirus-daily-news-updates-june-23-what-to-know-today-about-covid-19-in-the-seattle-area-washington-state-and-the-world-2/?utm_source=link&utm_medium=social#update-13980897
+    util.redistribute(data['WA']['data'], '2021-06-23', 26, 90, 'death')
+
+    # https://www.ksl.com/article/50193538/309-new-covid-19-cases-14-deaths-83k-vaccinations-reported-in-utah-friday
+    util.redistribute(data['UT']['data'], '2021-06-25', 10, 60, 'death')
 
     util.redistribute(data['WA']['data'], '2021-06-14', -38, 90, 'death')
 
@@ -649,8 +692,6 @@ if __name__ == "__main__":
 
     # Correct values 9/15 through 9/20 are: 91,304 92,712 94,746 97,279 99,562 101,227 (source: https://www.dhs.wisconsin.gov/covid-19/cases.htm)
     # data['WI']['data'].loc['2020-09-15':'2020-09-20', 'confirmed'] = [91304, 92712, 94746, 97279, 99562, 101227]
-
-
 
     if args.run:
         util.run_place(data,
