@@ -1,5 +1,8 @@
 # Bayesian compartmental models for COVID-19
 
+**Update**: if you're interested in running or modifying MechBayes, you probably want to use the repo at https://github.com/dsheldon/mechbayes instead. It has a streamlined version of the model we operated from roughly August 2021 until we stopped submitting forecasts with MechBayes. It has better scripting and less cruft.
+
+
 This repository contains code for Bayesian estimation of compartmental
 models for COVID-19 using [numpyro](https://github.com/pyro-ppl/numpyro) and [jax](https://github.com/google/jax).
 
